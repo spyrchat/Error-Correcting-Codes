@@ -1,12 +1,15 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from erasure_channel_encoding import simulate_ldpc_with_manual_decoding
+from erasure_channel_encoding import simulate_ldpc
 
 # Simulation parameters
+n = 49  # Length of codeword, adjusted to be a multiple of d_c
+d_v = 4  # Variable node degree for regular LDPC
+d_c = 7  # Check node degree for regular LDPC
 erasure_thresholds = np.linspace(0.1, 1.0, 10)  # Range of erasure thresholds to test
 
 # Run the simulation
-ser_results, bit_rate_results = simulate_ldpc_with_manual_decoding(erasure_thresholds)
+ser_results, bit_rate_results = simulate_ldpc(erasure_thresholds, n, d_v, d_c)
 
 # Plotting results
 plt.figure(figsize=(14, 6))
