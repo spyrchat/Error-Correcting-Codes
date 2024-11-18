@@ -90,28 +90,41 @@ for _ in range(num_messages):
         errors_per_snr[snr_value] += errors
 
         if errors != 0:
-            print(f'SNR(dB): {snr_value}')
+            print(f'SNR = {snr_value} dB')
             print(f'Received Message: {received_codeword}')
             print(f'Errors: {errors}')
             print('-------------------------------')
 
 ber_per_snr = errors_per_snr / (num_messages * 4)
+bit_rate_per_snr = 1 - ber_per_snr
 
-print("Summary")
-
-# Print the number of errors for each SNR value
-for snr, errors in zip(snr_db, errors_per_snr):
-    print(f"SNR = {snr} dB: Total Errors = {errors}, BER = {errors / (num_messages * 4)}")
+# Print summary
+print("Summary:")
+for snr, errors, ber, bit_rate in zip(snr_db, errors_per_snr, ber_per_snr, bit_rate_per_snr):
+    print(f"SNR = {snr} dB: Total Errors = {errors}, BER = {ber:.5f}, Bit Rate = {bit_rate:.5f}")
 
 print(f"Total Errors across all SNRs = {errors_per_snr.sum()}")
 
-# Plotting the results
-plt.figure(figsize=(10, 5))
-plt.plot(snr_db, ber_per_snr, marker='o', label='BER per SNR')
+# Plotting BER and Bit Rate
+plt.figure(figsize=(12, 6))
+
+# BER vs SNR
+plt.subplot(1, 2, 1)
+plt.plot(snr_db, ber_per_snr, marker='o', label='BER')
 plt.xlabel('SNR (dB)')
 plt.ylabel('BER')
 plt.title('BER vs SNR')
 plt.grid(True)
-plt.tight_layout()
 plt.legend()
+
+# Bit Rate vs SNR
+plt.subplot(1, 2, 2)
+plt.plot(snr_db, bit_rate_per_snr, marker='s', color='green', label='Bit Rate')
+plt.xlabel('SNR (dB)')
+plt.ylabel('Bit Rate')
+plt.title('Bit Rate vs SNR')
+plt.grid(True)
+plt.legend()
+
+plt.tight_layout()
 plt.show()
