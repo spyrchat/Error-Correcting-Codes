@@ -2,65 +2,62 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyldpc import make_ldpc, encode, decode, get_message
 
-def simulate_ldpc(erasure_thresholds, n, d_v, d_c, noise_std=0.2, num_iterations=100):
+def simulate_ldpc(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000):
     """
-    Simulate LDPC encoding, transmission with noise and erasures, and decoding
-    using pyldpc with Belief Propagation decoding.
-
-    Args:
-    - erasure_thresholds (list): List of erasure thresholds to test.
-    - n (int): Length of the codeword.
-    - d_v (int): Degree of variable nodes.
-    - d_c (int): Degree of check nodes.
-    - noise_std (float): Standard deviation of the Gaussian noise.
-    - num_iterations (int): Number of iterations in the simulation.
+    Simulate LDPC encoding, transmission with noise and erasures, and decoding.
 
     Returns:
-    - ser_results (list): Symbol Error Rates (SER) for each erasure threshold.
-    - bit_rate_results (list): Bit Rates for each erasure threshold.
+    - ser_results: Symbol Error Rates (SER) for each erasure threshold.
+    - bit_rate_results: Bit Rates for each erasure threshold.
     """
-    # Generate LDPC code
     H, G = make_ldpc(n, d_v, d_c, systematic=True, sparse=True)
-    k = G.shape[1]  # Number of information bits based on generator matrix
+    k = G.shape[1]  # Number of information bits
 
     ser_results = []
     bit_rate_results = []
 
+    snr_linear = 10 ** (snr_db / 10)
+    noise_std = np.sqrt(1 / (2 * snr_linear))  # Noise standard deviation
+
     for threshold in erasure_thresholds:
-        symbol_errors = 0
+        total_errors = 0
+        total_non_erased = 0
         total_transmitted_bits = 0
 
         for _ in range(num_iterations):
-            # Step 1: Generate a random message and encode it
+            # Generate random message and encode it
             message = np.random.randint(0, 2, k)
-            codeword = encode(G, message, snr=10)  # Encode with SNR for internal pyldpc purposes
+            codeword = encode(G, message, snr_db)
 
-            # Step 2: BPSK modulation
-            transmitted_signal = 1 - 2 * codeword  # BPSK: 0 -> +1, 1 -> -1
+            # BPSK modulation
+            transmitted_signal = 2 * codeword - 1
 
-            # Step 3: Add Gaussian noise
+            # Add AWGN
             noise = np.random.normal(0, noise_std, transmitted_signal.shape)
             received_signal = transmitted_signal + noise
 
-            # Step 4: Apply erasure threshold
+            # Apply erasure threshold
             erasures = np.abs(received_signal) < threshold
-            received_signal[erasures] = np.nan  # Set erased values to NaN for pyldpc's decode function
+            received_signal[erasures] = 0  # Neutral value for erased symbols
 
-            # Step 5: Decode with pyldpc's Belief Propagation
-            decoded_codeword = decode(H, received_signal, snr=10, maxiter=50)
+            # Scale signal for decoding
+            received_signal_scaled = 2 * received_signal / noise_std**2
+            decoded_codeword = decode(H, received_signal_scaled, snr=snr_db, maxiter=100)
             decoded_message = get_message(G, decoded_codeword)
 
-            # Step 6: Calculate errors
-            errors = np.sum(decoded_message != message)
-            symbol_errors += errors
-            total_transmitted_bits += k - np.sum(erasures[:k])  # Count non-erased bits
+            # Calculate errors (exclude erased bits)
+            non_erased_indices = ~erasures[:k]
+            errors = np.sum(decoded_message[non_erased_indices] != message[non_erased_indices])
+            total_errors += errors
+            total_non_erased += np.sum(non_erased_indices)
 
-        # Calculate SER and Bit Rate
-        ser = symbol_errors / (k * num_iterations)
+            # Calculate bit rate
+            total_transmitted_bits += np.sum(non_erased_indices)
+
+        ser = total_errors / total_non_erased if total_non_erased > 0 else 0
         bit_rate = total_transmitted_bits / (k * num_iterations)
 
         ser_results.append(ser)
         bit_rate_results.append(bit_rate)
 
     return ser_results, bit_rate_results
-
