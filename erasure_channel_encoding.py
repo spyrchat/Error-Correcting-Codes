@@ -2,7 +2,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from pyldpc import make_ldpc, encode, decode, get_message
 
-def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=1000):
+import os
+
+def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=1000, verbose=False):
     """
     Simulate LDPC encoding, transmission with noise and erasures, and decoding.
 
@@ -11,6 +13,7 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
     - bit_rate_results: Bit Rates for each erasure threshold.
     """
     H, G = make_ldpc(n, d_v, d_c, systematic=True, sparse=True)
+    print(f"Generated LDPC matrices: H.shape={H.shape}, G.shape={G.shape}")
     k = G.shape[1]  # Number of information bits
 
     ser_results = []
@@ -19,7 +22,13 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
     snr_linear = 10 ** (snr_db / 10)
     noise_std = np.sqrt(1 / (2 * snr_linear))  # Noise standard deviation
 
+    # Ensure plots directory exists
+    output_dir = os.path.dirname(os.path.abspath(__file__))
+    plot_dir = os.path.join(output_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)
+
     for threshold in erasure_thresholds:
+        print(f"Starting simulation for threshold {threshold} (SNR = {snr_db} dB)")
         total_errors = 0
         total_non_erased = 0
         total_transmitted_bits = 0
@@ -28,6 +37,9 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
             # Generate random message and encode it
             message = np.random.randint(0, 2, k)
             codeword = encode(G, message, snr_db)
+            if codeword is None:
+                print(f"Encoding failed at iteration {iteration + 1}.")
+                continue
 
             # BPSK modulation
             transmitted_signal = 2 * codeword - 1
@@ -43,12 +55,15 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
             # Scale signal for decoding
             received_signal_scaled = 2 * received_signal / noise_std**2
             decoded_codeword = decode(H, received_signal_scaled, snr=snr_db, maxiter=100)
+            if decoded_codeword is None:
+                print(f"Decoding failed at iteration {iteration + 1}, threshold {threshold}.")
+                continue
             decoded_message = get_message(G, decoded_codeword)
 
-            # Print transmitted and decoded messages
-            print(f"Iteration {iteration + 1}, Threshold {threshold}")
-            print(f"Transmitted Message: {message}")
-            print(f"Decoded Message:    {decoded_message}")
+            if verbose:
+                print(f"Iteration {iteration + 1}, Threshold {threshold}")
+                print(f"Transmitted Message: {message}")
+                print(f"Decoded Message:    {decoded_message}")
 
             # Calculate errors (exclude erased bits)
             non_erased_indices = ~erasures[:k]
@@ -79,18 +94,24 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
                 plt.axvline(0, color='black', linewidth=1)
                 plt.xlim(-2, 2)
                 plt.ylim(-0.5, 0.5)
-                plt.title(f'Constellation Diagram (Threshold {threshold}, Iteration {iteration + 1})')
+                plt.title(f'Constellation Diagram\n(SNR = {snr_db} dB, Threshold = {threshold})')
                 plt.xlabel('Real Part')
                 plt.ylabel('Imaginary Part')
                 plt.legend()
                 plt.grid()
-                plt.pause(0.001)
 
-        ser = total_errors / total_non_erased if total_non_erased > 0 else 0
-        bit_rate = total_transmitted_bits / (k * num_iterations)
+                # Save the plot
+                filename = os.path.join(plot_dir, f"constellation_snr_{snr_db}_threshold_{threshold:.2f}.png")
+                plt.savefig(filename)
+                print(f"Saved plot: {filename}")
+                plt.close()  # Close the figure after saving
+
+        ser = total_errors / total_non_erased if total_non_erased > 0 else np.nan
+        bit_rate = total_transmitted_bits / (k * num_iterations) if total_non_erased > 0 else 0
+
+        print(f"Threshold: {threshold}, SER: {ser}, Bit Rate: {bit_rate}")
 
         ser_results.append(ser)
         bit_rate_results.append(bit_rate)
 
-    plt.show()
     return ser_results, bit_rate_results
