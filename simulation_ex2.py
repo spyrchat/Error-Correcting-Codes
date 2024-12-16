@@ -1,8 +1,11 @@
+import matplotlib
+matplotlib.use('Agg')  # Non-interactive backend for multiprocessing safe plotting
+
 import matplotlib.pyplot as plt
 import numpy as np
 import os
 from erasure_channel_encoding import simulate_ldpc_erasure_correction
-from concurrent.futures import ThreadPoolExecutor
+from multiprocessing import Pool
 
 # Simulation parameters
 n = 49  # Length of codeword, adjusted to be a multiple of d_c
@@ -14,7 +17,7 @@ snr_values = [3, 5, 10]
 # Directory for saving plots
 output_dir = os.path.dirname(os.path.abspath(__file__))
 plot_dir = os.path.join(output_dir, "plots")
-os.makedirs(plot_dir, exist_ok=True)
+os.makedirs(plot_dir, exist_ok=True)  # Ensure plots directory exists
 
 # Function to run simulation and save plots
 def run_simulation_and_plot(snr):
@@ -54,12 +57,15 @@ def run_simulation_and_plot(snr):
     filename = os.path.join(plot_dir, f"results_snr_{snr}.png")
     plt.savefig(filename)
     print(f"Saved plot for SNR = {snr} at: {filename}")
-    plt.close()  # Close the figure instead of using plt.pause()
+    plt.close()  # Close the figure
 
     # Print final results
     for threshold, ser, bit_rate in zip(erasure_thresholds, ser_results, bit_rate_results):
         print(f"SNR = {snr}, Threshold: {threshold:.2f}, SER: {ser:.5f}, Bit Rate: {bit_rate:.5f}")
 
-# Run simulations in parallel
-with ThreadPoolExecutor() as executor:
-    executor.map(run_simulation_and_plot, snr_values)
+# Main function for multiprocessing
+if __name__ == "__main__":
+    with Pool() as pool:
+        pool.map(run_simulation_and_plot, snr_values)
+
+    print("All simulations completed.")
