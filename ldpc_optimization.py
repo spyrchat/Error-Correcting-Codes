@@ -5,7 +5,7 @@ from joblib import Parallel, delayed
 import matplotlib.pyplot as plt
 
 # Simulation function to evaluate BER
-def simulate_ldpc_performance(H, G, snr_range, num_iterations=100):
+def simulate_ldpc_performance(H, G, snr_range, num_iterations=50):
     """
     Simulate LDPC encoding, transmission with noise, and decoding.
     Evaluates the average BER over a range of SNR values.
@@ -68,7 +68,7 @@ def fitness_function(params):
         return 1.0  # Penalize failed configurations
 
 # LDPC parameters
-snr_db = 7  # Signal-to-Noise Ratio in dB
+snr_db = 10  # Signal-to-Noise Ratio in dB
 
 # Define bounds for each parameter
 bounds = [
