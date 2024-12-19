@@ -67,9 +67,11 @@ def error_calculation(message, received_codeword):
 
 # Experiment settings
 snr_db = np.arange(0, 11)  # SNR values from 0 to 10 dB
-num_messages = 10000  # Number of different messages to test
+num_messages = 100000  # Number of different messages to test
 
 errors_per_snr = np.zeros(len(snr_db))
+
+noisy_bits_per_snr = {snr: [] for snr in snr_db}  # Store (original_bit, noisy_bit)
 
 # Run the experiment for multiple messages
 for _ in range(num_messages):
@@ -84,6 +86,7 @@ for _ in range(num_messages):
 
     for snr_value in snr_db:
         noisy_codeword = add_awgn(bpsk_codeword, snr_value)
+        noisy_bits_per_snr[snr_value].extend(zip(bpsk_codeword,noisy_codeword))  # Store tuples
         received_codeword = demodulator(noisy_codeword)
         syndrome, final_codeword = hamming_decoding(received_codeword, snr_value)
         errors = error_calculation(original, final_codeword)
@@ -113,6 +116,7 @@ plt.subplot(1, 2, 1)
 plt.plot(snr_db, ber_per_snr, marker='o', label='BER')
 plt.xlabel('SNR (dB)')
 plt.ylabel('BER')
+plt.yscale('log')  # Set y-axis to log scale
 plt.title('BER vs SNR')
 plt.grid(True)
 plt.legend()
@@ -127,4 +131,43 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
+plt.show()
+
+# Plotting Noisy Bits for each SNR in subplots
+plt.figure(figsize=(12, 10))
+
+# Define markers and labels for the legend
+legend_elements = [
+    plt.Line2D([0], [0], marker='o', color='g', label='Transmitted Bits', markersize=8, linestyle='None'),
+    plt.Line2D([0], [0], marker='x', color='blue', label='Noisy (+1)', markersize=8, linestyle='None'),
+    plt.Line2D([0], [0], marker='x', color='red', label='Noisy (-1)', markersize=8, linestyle='None')
+]
+
+for idx, snr_value in enumerate(snr_db):
+    plt.subplot(4, 3, idx + 1)  # Create a 4x3 grid of subplots
+
+    # Separate noisy bits based on their original transmitted values
+    transmitted_positive = [noisy_bit for original_bit, noisy_bit in noisy_bits_per_snr[snr_value] if
+                            original_bit == +1]
+    transmitted_negative = [noisy_bit for original_bit, noisy_bit in noisy_bits_per_snr[snr_value] if
+                            original_bit == -1]
+
+    # Plot transmitted bits
+    plt.scatter([-1, 1], [0, 0], marker='o', color='g', s=150, label='Transmitted Bits')
+
+    # Plot noisy bits corresponding to +1 and -1
+    plt.scatter(transmitted_positive, [0] * len(transmitted_positive), marker='x', color='blue', label='Noisy (+1)',
+                alpha=0.6)
+    plt.scatter(transmitted_negative, [0] * len(transmitted_negative), marker='x', color='red', label='Noisy (-1)',
+                alpha=0.6)
+
+    plt.axhline(0, color='black', linestyle='--', linewidth=0.8, alpha=0.7)  # Optional for visual alignment
+
+    plt.title(f'SNR = {snr_value} dB')
+    plt.grid()
+
+# Add a single legend outside the subplots
+plt.figlegend(handles=legend_elements, loc='lower center', ncol=3, frameon=False, fontsize=10)
+
+plt.tight_layout(rect=[0, 0.05, 1, 1])  # Adjust layout to make space for the legend
 plt.show()
