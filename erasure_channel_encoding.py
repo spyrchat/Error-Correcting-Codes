@@ -33,14 +33,13 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
         total_non_erased = 0
         total_transmitted_bits = 0
 
-        corrected_from_erasures_count = 0
-        corrected_from_noise_count = 0
-        uncorrected_symbols_count = 0
-
         for iteration in range(num_iterations):
             # Generate random message and encode it
             message = np.random.randint(0, 2, k)
-            codeword = encode(G, message,snr_db)
+            codeword = encode(G, message, snr=snr_db)
+
+            # Ensure codeword contains binary values (0 and 1)
+            codeword = np.round(codeword).astype(int)
 
             # BPSK modulation and AWGN noise
             transmitted_signal = 2 * codeword - 1
@@ -61,18 +60,6 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
             decoded_codeword = decode(H, received_signal_scaled, snr=snr_db, maxiter=100)
             decoded_message = get_message(G, decoded_codeword)
 
-            # Corrected symbols
-            corrected_from_erasures = erasures[:k] & (decoded_message == message)
-            corrected_from_noise = ~erasures[:k] & (decoded_message == message)
-
-            # Uncorrected symbols
-            uncorrected_symbols = decoded_message != message
-
-            # Update counts
-            corrected_from_erasures_count += np.sum(corrected_from_erasures)
-            corrected_from_noise_count += np.sum(corrected_from_noise)
-            uncorrected_symbols_count += np.sum(uncorrected_symbols)
-
             # Calculate errors: Ignore erased bits
             non_erased_indices = ~erasures[:k]
             errors = np.sum(decoded_message[non_erased_indices] != message[non_erased_indices])
@@ -86,10 +73,6 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
                 plt.scatter(transmitted_signal, np.zeros_like(transmitted_signal), color='blue', label='Transmitted Symbols', s=50)
                 plt.scatter(received_signal, np.zeros_like(received_signal), color='green', alpha=0.6, label='Received Symbols', s=50)
                 plt.scatter(received_signal[erasures], np.zeros_like(received_signal[erasures]), color='red', alpha=0.8, label='Erased Symbols', s=50)
-                plt.scatter(received_signal[np.where(corrected_from_erasures)], np.zeros_like(received_signal[np.where(corrected_from_erasures)]),
-                            color='purple', alpha=0.8, label='Corrected from Erasures', s=100)
-                plt.scatter(received_signal[np.where(corrected_from_noise)], np.zeros_like(received_signal[np.where(corrected_from_noise)]),
-                            color='cyan', alpha=0.8, label='Corrected from Noise', s=100)
 
                 plt.gca().add_patch(
                     plt.Rectangle(
@@ -121,9 +104,6 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10,
         bit_rate = total_transmitted_bits / (k * num_iterations) if total_transmitted_bits > 0 else 0
 
         print(f"Threshold: {threshold:.2f}, SER: {ser:.5f}, Bit Rate: {bit_rate:.5f}")
-        print(f"Corrected from erasures: {corrected_from_erasures_count}")
-        print(f"Corrected from noise: {corrected_from_noise_count}")
-        print(f"Uncorrected symbols: {uncorrected_symbols_count}")
 
         ser_results.append(ser)
         bit_rate_results.append(bit_rate)
