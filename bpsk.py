@@ -72,7 +72,6 @@ errors_per_snr = np.zeros(len(snr_db))
 
 noisy_bits_per_snr = {snr: [] for snr in snr_db}  # form (original_bit, noisy_bit)
 
-# Run the experiment for multiple messages
 for _ in range(num_messages):
     original = np.random.randint(0, 2, 4)  # random 4bit message
     print()
