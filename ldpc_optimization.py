@@ -1,123 +1,149 @@
+import cvxpy as cp
 import numpy as np
-from pyldpc import make_ldpc, encode, decode, get_message
-from scipy.optimize import differential_evolution
-from joblib import Parallel, delayed
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plot
+import math
 
-# Simulation function to evaluate BER
-def simulate_ldpc_performance(H, G, snr_range, num_iterations=50):
+# Returns rho polynomial (highest exponents first) corresponding to average check node degree c_avg
+def c_avg_to_rho(c_avg):
     """
-    Simulate LDPC encoding, transmission with noise, and decoding.
-    Evaluates the average BER over a range of SNR values.
+    Converts the average check node degree c_avg into a check node polynomial rho.
 
-    Args:
-    - H: Parity-check matrix
-    - G: Generator matrix
-    - snr_range: List of SNR values in dB
-    - num_iterations: Number of iterations for each SNR value
+    Parameters:
+    c_avg (float): Average check node degree.
 
     Returns:
-    - Average BER across the SNR range
+    numpy.ndarray: Polynomial coefficients of rho(x).
     """
-    def single_iteration(snr_db):
-        noise_std = np.sqrt(1 / (2 * 10 ** (snr_db / 10)))
-        total_errors = 0
+    ct = math.floor(c_avg)
+    r1 = ct * (ct + 1 - c_avg) / c_avg
+    r2 = (c_avg - ct * (ct + 1 - c_avg)) / c_avg
+    rho_poly = np.concatenate(([r2, r1], np.zeros(ct - 1))) 
+    return rho_poly
 
-        for _ in range(num_iterations):
-            message = np.random.randint(0, 2, G.shape[1])
-            codeword = encode(G, message, snr_db)
-
-            # Transmit with noise
-            transmitted_signal = 2 * codeword - 1
-            noise = np.random.normal(0, noise_std, transmitted_signal.shape)
-            received_signal = transmitted_signal + noise
-
-            # Decode
-            received_signal_scaled = 2 * received_signal / noise_std**2
-            decoded_codeword = decode(H, received_signal_scaled, snr=snr_db, maxiter=100)
-            decoded_message = get_message(G, decoded_codeword)
-
-            # Count errors
-            total_errors += np.sum(decoded_message != message)
-
-        ber = total_errors / (num_iterations * G.shape[1])
-        return ber
-
-    # Parallel computation for each SNR value
-    ber_results = Parallel(n_jobs=-1)(delayed(single_iteration)(snr_db) for snr_db in snr_range)
-    return np.mean(ber_results)
-
-# Objective function for the optimizer
-def fitness_function(params):
+# Finds the optimal variable node degree distribution lambda for a given epsilon, v_max, and c_avg
+def find_best_lambda(epsilon, v_max, c_avg):
     """
-    Objective function for genetic algorithm.
-    params: [n, k, d_v, d_c]
+    Optimizes the variable node degree distribution (lambda) for given parameters.
+
+    Parameters:
+    epsilon (float): Channel parameter.
+    v_max (int): Maximum variable node degree.
+    c_avg (float): Average check node degree.
+
+    Returns:
+    numpy.ndarray: Optimal lambda distribution.
     """
-    n, k, d_v, d_c = int(params[0]), int(params[1]), int(params[2]), int(params[3])
+    rho = c_avg_to_rho(c_avg)
+    # Quantization of fixed-point condition
+    D = 500
+    xi_range = np.arange(1.0, D + 1, 1) / D                     
 
-    # Penalize invalid configurations
-    if d_c <= d_v or n % d_c != 0 or k >= n:
-        return 1.0  # High BER for invalid parameters
-
+    # Variable to optimize is lambda with v_max entries
+    v_lambda = cp.Variable(shape=v_max)   
+    
+    # Objective function
+    cv = 1 / np.arange(v_max, 0, -1)    
+    objective = cp.Maximize(v_lambda @ cv)
+    
+    # Constraints    
+    # Constraint 1: v_lambda are fractions between 0 and 1 and sum up to 1
+    constraints = [cp.sum(v_lambda) == 1, v_lambda >= 0]
+    
+    # Constraint 2: No variable nodes of degree 1
+    constraints += [v_lambda[v_max - 1] == 0]
+               
+    # Constraint 3: Fixed-point condition for all discrete xi values
+    for xi in xi_range:
+        constraints += [v_lambda @ [epsilon * (1 - np.polyval(rho, 1.0 - xi)) ** (v_max - 1 - j) for j in range(v_max)] - xi <= 0]
+    
+    # Constraint 4: Stability condition
+    constraints += [v_lambda[v_max - 2] <= 1 / epsilon / np.polyval(np.polyder(rho), 1.0)]
+    
+    # Set up the problem and solve
+    problem = cp.Problem(objective, constraints)
     try:
-        H, G = make_ldpc(n, d_v, d_c, systematic=True, sparse=True)
-        snr_range = [5, 7, 10]  # Test across multiple SNR values
-        ber = simulate_ldpc_performance(H, G, snr_range)
-        return ber + 0.01 * (k / n)  # Penalize high code rate
-    except:
-        return 1.0  # Penalize failed configurations
+        problem.solve(solver=cp.ECOS, verbose=True)
+    except cp.error.SolverError:
+        print("Solver ECOS failed. Trying SCS...")
+        problem.solve(solver=cp.SCS, verbose=True)
+        
+    if problem.status == "optimal":
+        r_lambda = v_lambda.value
+        # Remove entries close to zero and renormalize
+        r_lambda[r_lambda <= 1e-7] = 0
+        r_lambda = r_lambda / sum(r_lambda)
+    else:
+        r_lambda = np.array([])
+    
+    return r_lambda
 
-# LDPC parameters
-snr_db = 10  # Signal-to-Noise Ratio in dB
-
-# Define bounds for each parameter
-bounds = [
-    (100, 1000),  # Codeword length (n)
-    (50, 500),    # Information bits (k)
-    (2, 6),       # Bit node degree (d_v)
-    (6, 12)       # Check node degree (d_c)
-]
-
-# Run the genetic algorithm
-ber_history = []
-
-def logging_fitness_function(params):
+# Finds the best rate for a given epsilon, v_max, and maximum check node degree
+def find_best_rate(epsilon, v_max, c_max):
     """
-    Wraps fitness_function to log BER for each iteration.
+    Computes the best design rate for given parameters by optimizing lambda and rho.
+
+    Parameters:
+    epsilon (float): Channel parameter.
+    v_max (int): Maximum variable node degree.
+    c_max (int): Maximum check node degree.
+
+    Returns:
+    tuple: Best achievable design rate, best lambda, and corresponding c_avg.
     """
-    ber = fitness_function(params)
-    ber_history.append(ber)
-    return ber
+    c_range = np.linspace(3, c_max, num=100)
+    rates = np.zeros_like(c_range)
+    best_lambda = None
+    best_c_avg = None
 
-result = differential_evolution(
-    func=logging_fitness_function,
-    bounds=bounds,
-    strategy="best1bin",  # Differential evolution strategy
-    maxiter=50,           # Maximum number of generations
-    popsize=20,           # Population size
-    tol=1e-6,             # Tolerance for convergence
-    mutation=(0.5, 1),    # Mutation factor range
-    recombination=0.7,    # Recombination rate
-    seed=42,              # Random seed for reproducibility
-    disp=True             # Enables verbose output
-)
+    # Loop over all c_avg values
+    for index, c_avg in enumerate(c_range):
+        p_lambda = find_best_lambda(epsilon, v_max, c_avg)        
+        p_rho = c_avg_to_rho(c_avg)         
+        if np.array(p_lambda).size > 0:
+            design_rate = 1 - np.polyval(np.polyint(p_rho), 1) / np.polyval(np.polyint(p_lambda), 1)
+            if design_rate >= 0:
+                rates[index] = design_rate
 
-# Extract the best solution
-best_solution = result.x
-best_ber = result.fun
+    # Find largest rate
+    largest_rate_index = np.argmax(rates)
+    best_lambda = find_best_lambda(epsilon, v_max, c_range[largest_rate_index])
+    best_c_avg = c_range[largest_rate_index]
+    best_rate = rates[largest_rate_index]
 
-# Print optimized parameters
-print("\nOptimized Parameters:")
-print(f"Codeword Length (n): {int(best_solution[0])}")
-print(f"Information Bits (k): {int(best_solution[1])}")
-print(f"Bit Node Degree (d_v): {int(best_solution[2])}")
-print(f"Check Node Degree (d_c): {int(best_solution[3])}")
-print(f"Best BER: {best_ber:.5e}")
+    return best_rate, best_lambda, best_c_avg
+if __name__ == "__main__":
+    # Main optimization loop
+    target_rate = 0.7
+    dv_max = 16
+    dc_max = 22
 
-# Plot BER convergence
-plt.plot(ber_history)
-plt.title("BER Convergence Over Generations")
-plt.xlabel("Iteration")
-plt.ylabel("BER")
-plt.grid()
-plt.show()
+    T_Delta = 0.001
+    epsilon = 0.5
+    Delta_epsilon = 0.5
+ 
+    best_solution = None
+    best_threshold = None
+
+    while Delta_epsilon >= T_Delta:   
+        print('Running optimization for epsilon = %1.5f' % epsilon)
+        
+        rate, lambda_poly, c_avg = find_best_rate(epsilon, dv_max, dc_max)
+        if rate > target_rate:
+            epsilon = epsilon + Delta_epsilon / 2
+        else:
+            epsilon = epsilon - Delta_epsilon / 2
+
+        if best_solution is None or rate > best_threshold:
+            best_solution = (rate, lambda_poly, c_avg, epsilon)
+            best_threshold = rate
+            
+        Delta_epsilon = Delta_epsilon / 2
+
+    # Print the best solution
+    if best_solution:
+        print("\nBest solution found:")
+        print("Design Rate: %1.3f" % best_solution[0])
+        print("Lambda Polynomial:")
+        print(np.poly1d(best_solution[1], variable='Z'))
+        print("Average Check Node Degree: %1.3f" % best_solution[2])
+        print("Epsilon: %1.5f" % best_solution[3])
