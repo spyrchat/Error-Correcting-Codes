@@ -34,12 +34,11 @@ def hamming_decoding(received_codeword, snr):
                   [1, 0, 1, 1, 0, 1, 0],
                   [0, 1, 1, 1, 0, 0, 1]])
 
-    # Calculate the syndrome
     syndrome = (H @ received_codeword.transpose()) % 2
 
-    # Syndrome lookup table for single-bit error correction
+    # syndrome lookup for single-bit error correction
     syndrome_lookup = {
-        (0, 0, 0): None,  # No error
+        (0, 0, 0): None,
         (1, 1, 0): 0,
         (1, 0, 1): 1,
         (0, 1, 1): 2,
@@ -54,8 +53,8 @@ def hamming_decoding(received_codeword, snr):
     error_position = syndrome_lookup.get(syndrome_tuple)
 
     if error_position is not None:
-        # Correct the error in received codeword
-        received_codeword[error_position] ^= 1  # Flip the bit
+        # if theres an error, correct it
+        received_codeword[error_position] ^= 1  # flip the bit
         print(f"SNR = {snr} dB. Error found at bit position: {error_position}")
         #print(f"Corrected Codeword: {received_codeword}")
 
@@ -65,15 +64,16 @@ def error_calculation(message, received_codeword):
     errors = np.sum(received_codeword[:4] != message)
     return errors
 
-# Experiment settings
-snr_db = np.arange(0, 11)  # SNR values from 0 to 10 dB
-num_messages = 10000  # Number of different messages to test
+# simulation parameters
+snr_db = np.arange(0, 11)
+num_messages = 10**6
 
 errors_per_snr = np.zeros(len(snr_db))
 
-# Run the experiment for multiple messages
+noisy_bits_per_snr = {snr: [] for snr in snr_db}  # form (original_bit, noisy_bit)
+
 for _ in range(num_messages):
-    original = np.random.randint(0, 2, 4)  # Generate a random 4-bit message
+    original = np.random.randint(0, 2, 4)  # random 4bit message
     print()
     print(f'Original Message: {original}')
     codeword = hamming_coding(original)
@@ -84,6 +84,7 @@ for _ in range(num_messages):
 
     for snr_value in snr_db:
         noisy_codeword = add_awgn(bpsk_codeword, snr_value)
+        noisy_bits_per_snr[snr_value].extend(zip(bpsk_codeword,noisy_codeword))
         received_codeword = demodulator(noisy_codeword)
         syndrome, final_codeword = hamming_decoding(received_codeword, snr_value)
         errors = error_calculation(original, final_codeword)
@@ -98,14 +99,13 @@ for _ in range(num_messages):
 ber_per_snr = errors_per_snr / (num_messages * 4)
 bit_rate_per_snr = 4 / 7 * (1 - ber_per_snr)
 
-# Print summary
 print("Summary:")
 for snr, errors, ber, bit_rate in zip(snr_db, errors_per_snr, ber_per_snr, bit_rate_per_snr):
     print(f"SNR = {snr} dB: Total Errors = {errors}, BER = {ber:.5f}, Bit Rate = {bit_rate:.5f}")
 
 print(f"Total Errors across all SNRs = {errors_per_snr.sum()}")
 
-# Plotting BER and Bit Rate
+# plots
 plt.figure(figsize=(12, 6))
 
 # BER vs SNR
@@ -113,6 +113,7 @@ plt.subplot(1, 2, 1)
 plt.plot(snr_db, ber_per_snr, marker='o', label='BER')
 plt.xlabel('SNR (dB)')
 plt.ylabel('BER')
+plt.yscale('log')
 plt.title('BER vs SNR')
 plt.grid(True)
 plt.legend()
@@ -127,4 +128,43 @@ plt.grid(True)
 plt.legend()
 
 plt.tight_layout()
-plt.show()
+
+plt.savefig("Hamming_1.png")
+
+# plot for noisy bits
+plt.figure(figsize=(12, 10))
+
+legend_elements = [
+    plt.Line2D([0], [0], marker='o', color='g', label='Transmitted Bits', markersize=8, linestyle='None'),
+    plt.Line2D([0], [0], marker='x', color='blue', label='Noisy (+1)', markersize=8, linestyle='None'),
+    plt.Line2D([0], [0], marker='x', color='red', label='Noisy (-1)', markersize=8, linestyle='None')
+]
+
+for idx, snr_value in enumerate(snr_db):
+    plt.subplot(4, 3, idx + 1)
+
+    # separate noisy bits based on their original transmitted values
+    transmitted_positive = [noisy_bit for original_bit, noisy_bit in noisy_bits_per_snr[snr_value] if
+                            original_bit == +1]
+    transmitted_negative = [noisy_bit for original_bit, noisy_bit in noisy_bits_per_snr[snr_value] if
+                            original_bit == -1]
+
+    # plot original bits
+    plt.scatter([-1, 1], [0, 0], marker='o', color='g', s=150, label='Transmitted Bits')
+
+    # plot noisy bits
+    plt.scatter(transmitted_positive, [0] * len(transmitted_positive), marker='x', color='blue', label='Noisy (+1)',
+                alpha=0.6)
+    plt.scatter(transmitted_negative, [0] * len(transmitted_negative), marker='x', color='red', label='Noisy (-1)',
+                alpha=0.6)
+
+    plt.axhline(0, color='black', linestyle='--', linewidth=0.8, alpha=0.7)
+
+    plt.title(f'SNR = {snr_value} dB')
+    plt.grid()
+
+plt.figlegend(handles=legend_elements, loc='lower center', ncol=3, frameon=False, fontsize=10)
+
+plt.tight_layout(rect=[0, 0.05, 1, 1])
+
+plt.savefig('Hamming_2')
