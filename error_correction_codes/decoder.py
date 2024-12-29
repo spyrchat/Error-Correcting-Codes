@@ -158,37 +158,26 @@ def _logbp_numba_regular(bits_hist, bits_values, nodes_hist, nodes_values, Lc, L
     return Lq, Lr, L_posteriori
 
 
-
 def get_message(tG, x):
-    """Compute the original `n_bits` message from a `n_code` codeword `x`.
-
-    Parameters
-    ----------
-    tG: array (n_code, n_bits) coding matrix tG.
-    x: array (n_code,) decoded codeword of length `n_code`.
-
-    Returns
-    -------
-    message: array (n_bits,). Original binary message.
-
-    """
+    """Compute the original `n_bits` message from a `n_code` codeword `x`."""
     n, k = tG.shape
-
     if len(x) != n:
-        raise ValueError(f"Inconsistent dimensions: x has {len(x)} elements, but tG has {n} columns.")
+        raise ValueError(f"Inconsistent dimensions: x has {len(x)} elements, but tG has {n} rows.")
 
-    if k != n - tG.shape[0]:
-        raise ValueError(f"Inconsistent dimensions: tG has {tG.shape[0]} rows but k={k}")
+    if k > len(x):
+        raise ValueError(f"Inconsistent dimensions: tG requires {k} columns, but x has {len(x)} elements.")
 
+    print(f"Input x dimensions: {len(x)}, tG dimensions: {tG.shape}")  # Debugging
 
-    if len(tG) != k:
-        raise ValueError(f"Inconsistent dimensions: tG has {len(tG)} rows but k={k}")
-
+    # Gaussian elimination to reduce the system
     rtG, rx = gausselimination(tG, x)
 
-    message = np.zeros(k).astype(int)
+    # Ensure rx has at least `k` elements before processing
+    if len(rx) < k:
+        raise ValueError(f"rx has {len(rx)} elements, expected at least {k}.")
 
     # Extract message bits
+    message = np.zeros(k).astype(int)
     message[k - 1] = rx[k - 1]
     for i in reversed(range(k - 1)):
         message[i] = rx[i]
@@ -196,4 +185,3 @@ def get_message(tG, x):
                                     message[list(range(i + 1, k))])
 
     return abs(message)
-
