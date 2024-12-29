@@ -30,8 +30,7 @@ Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1), Lambda[::-1])  # Reverse or
 rho_prime = np.dot(np.arange(1, len(rho) + 1), rho[::-1])  # Reverse order
 n = int(np.ceil((rho_prime / (1 - design_rate)) ** 2))
 erasure_thresholds = np.linspace(0.1, 1.0, 50)  # Increase points for smooth curves
-snr_values = [3, 5, 10]
-
+snr_values = 10
 # Directory for saving plots
 output_dir = os.path.dirname(os.path.abspath(__file__))
 plot_dir = os.path.join(output_dir, "plots")
@@ -83,7 +82,5 @@ def run_simulation_and_plot(snr):
 
 # Main function for multiprocessing
 if __name__ == "__main__":
-    with Pool() as pool:
-        pool.map(run_simulation_and_plot, snr_values)
-
+    run_simulation_and_plot(snr_values)
     print("All simulations completed.")
