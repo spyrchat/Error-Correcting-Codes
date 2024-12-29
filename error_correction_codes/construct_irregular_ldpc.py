@@ -1,31 +1,6 @@
 import numpy as np
 from scipy.sparse import csr_matrix
-
-
-def gaussian_elimination_mod2(H):
-    """Reduce a binary matrix H to systematic form [I | P]."""
-    H = H.copy()
-    rows, cols = H.shape
-    pivot_row = 0
-
-    for col in range(cols):
-        for r in range(pivot_row, rows):
-            if H[r, col] == 1:
-                H[[pivot_row, r]] = H[[r, pivot_row]]
-                break
-        else:
-            continue
-
-        for r in range(rows):
-            if r != pivot_row and H[r, col] == 1:
-                H[r] ^= H[pivot_row]
-
-        pivot_row += 1
-        if pivot_row == rows:
-            break
-
-    return H
-
+from utils import gaussian_elimination_mod2
 
 def construct_irregular_ldpc(n, Lambda, rho):
     """
@@ -71,10 +46,13 @@ def construct_irregular_ldpc(n, Lambda, rho):
 
     row_degrees = H.sum(axis=1)
     col_degrees = H.sum(axis=0)
+
+    # Ensure all rows and columns have at least one connection
     for i in range(m):
         if row_degrees[i] == 0:
             v = np.random.randint(0, n)
             H[i, v] = 1
+
     for j in range(n):
         if col_degrees[j] == 0:
             c = np.random.randint(0, m)
@@ -82,21 +60,33 @@ def construct_irregular_ldpc(n, Lambda, rho):
 
     H_sparse = csr_matrix(H)
 
-    H_dense = H_sparse.toarray()
+    # Convert H to systematic form and construct G
     try:
+        H_dense = H_sparse.toarray()
+        rank = np.linalg.matrix_rank(H_dense)
+        if rank != m:
+            raise ValueError(f"Rank mismatch: expected {m}, got {rank}")
+
         H_systematic = gaussian_elimination_mod2(H_dense)
         m, n = H_systematic.shape
-        k = n - m
+        k = n - m  # Correct calculation of message length
         if k <= 0:
-            raise ValueError("Number of message bits is invalid. Check input parameters.")
+            raise ValueError(f"Invalid k: k={k}. Ensure n > m.")
+
         P = H_systematic[:, m:]
         I_k = np.eye(k, dtype=int)
         G_dense = np.hstack((P.T, I_k))
+
+        if G_dense.shape != (k, n):
+            raise ValueError(f"Inconsistent G dimensions: Expected {(k, n)}, got {G_dense.shape}")
+
         G_sparse = csr_matrix(G_dense)
+
     except Exception as e:
         raise ValueError(f"Systematic form transformation failed: {e}")
 
     return H_sparse, G_sparse
+
 
 
 def main():

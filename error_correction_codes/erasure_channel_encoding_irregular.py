@@ -25,6 +25,7 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
 
     snr_linear = 10 ** (snr_db / 10)
     noise_std = np.sqrt(1 / (2 * snr_linear))  # Noise standard deviation
+    noise_std_sq = noise_std**2  # Precompute noise variance
 
     # Ensure plots directory exists
     output_dir = os.path.dirname(os.path.abspath(__file__))
@@ -58,11 +59,17 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             decoder_input[erasures] = 0  # Neutralize erased symbols
 
             # Scale signal for decoding
-            received_signal_scaled = 2 * decoder_input / noise_std**2
+            received_signal_scaled = 2 * decoder_input / noise_std_sq
 
             # Decode
             decoded_codeword = decode(H, received_signal_scaled, snr=snr_db, maxiter=100)
-            decoded_message = get_message(G, decoded_codeword)
+
+            # Extract the first k bits (message bits) from the decoded codeword
+            message_bits = decoded_codeword[:k]  # Ensure it matches message length
+
+            # Pass the extracted message bits to get_message
+            # Extract only the first k bits (information bits) from the decoded codeword
+            decoded_message = get_message(G, decoded_codeword[:k])
 
             # Calculate errors: Ignore erased bits
             non_erased_indices = ~erasures[:k]

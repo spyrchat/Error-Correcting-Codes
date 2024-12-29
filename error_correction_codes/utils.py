@@ -34,6 +34,40 @@ def binaryproduct(X, Y):
         pass
     return A % 2
 
+def gaussian_elimination_mod2(matrix):
+    """
+    Perform Gaussian elimination over GF(2) to reduce the matrix to row echelon form.
+
+    Parameters:
+        matrix (numpy.ndarray): A binary matrix (elements are 0 or 1).
+
+    Returns:
+        numpy.ndarray: Row echelon form of the input matrix over GF(2).
+    """
+    mat = matrix.copy()
+    rows, cols = mat.shape
+    pivot_row = 0
+
+    for col in range(cols):
+        # Find the row with a 1 in the current column at or below the pivot row
+        for r in range(pivot_row, rows):
+            if mat[r, col] == 1:
+                # Swap the pivot row with the current row
+                mat[[pivot_row, r]] = mat[[r, pivot_row]]
+                break
+        else:
+            # No pivot in this column, move to the next column
+            continue
+
+        # Eliminate all 1s in the current column below the pivot row
+        for r in range(pivot_row + 1, rows):
+            if mat[r, col] == 1:
+                mat[r] ^= mat[pivot_row]
+
+        # Move to the next pivot row
+        pivot_row += 1
+
+    return mat
 
 def gaussjordan(X, change=0):
     """Compute the binary row reduced echelon form of X.
