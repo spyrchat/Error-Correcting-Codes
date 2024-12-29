@@ -74,7 +74,7 @@ def find_best_lambda(epsilon, v_max, c_avg):
         r_lambda = r_lambda / sum(r_lambda)
     else:
         r_lambda = np.array([])
-    
+     
     return r_lambda
 
 # Finds the best rate for a given epsilon, v_max, and maximum check node degree
@@ -147,3 +147,4 @@ if __name__ == "__main__":
         print(np.poly1d(best_solution[1], variable='Z'))
         print("Average Check Node Degree: %1.3f" % best_solution[2])
         print("Epsilon: %1.5f" % best_solution[3])
+        print(c_avg_to_rho(best_solution[2]))

@@ -1,10 +1,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pyldpc import encode, decode, get_message
-from make_ldpc import make_ldpc_irregular
+from construct_irregular_ldpc import construct_irregular_ldpc
 import os
 
-def simulate_ldpc_erasure_correction(erasure_thresholds, n, lambda_dist, rho_dist, snr_db=10, num_iterations=1000, plot_interval=1000, verbose=False):
+def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_variable_nodes, lambda_dist, rho_dist, snr_db=10, num_iterations=1000, plot_interval=1000, verbose=False):
     """
     Simulate LDPC encoding, transmission with noise and erasures, and decoding.
 
@@ -13,7 +13,9 @@ def simulate_ldpc_erasure_correction(erasure_thresholds, n, lambda_dist, rho_dis
     - bit_rate_results: Bit Rates for each erasure threshold.
     """
     # Generate LDPC matrices
-    H, G = make_ldpc_irregular(n, lambda_dist=lambda_dist, rho_dist=rho_dist, systematic=True, sparse=True)
+    H, G = construct_irregular_ldpc(number_of_variable_nodes, lambda_dist, rho_dist)
+    H = H.toarray()
+    G = G.toarray()
     k = G.shape[1]  # Number of information bits
     print(f"Generated LDPC matrices: H.shape={H.shape}, G.shape={G.shape}")
 
