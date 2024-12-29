@@ -1,38 +1,30 @@
 """Decoding module."""
 import numpy as np
-import warnings
-
-from utils import binaryproduct, gausselimination, check_random_state, incode, _bitsandnodes
 import cupy as cp
 from cupyx.scipy.sparse import csr_matrix, isspmatrix_csr
 from numba import cuda
 import math
+import warnings
+from utils import binaryproduct, gausselimination, check_random_state, incode, _bitsandnodes
+
 
 def decode(H, y, snr, maxiter=1000):
     """Decode a Gaussian noise corrupted n bits message using BP algorithm."""
     m, n = H.shape
 
+    # Convert H to a sparse matrix
+    H_sparse = ensure_compatible_sparse(H)
+
     # Extract bits and nodes
     bits_hist, bits_values, nodes_hist, nodes_values = _bitsandnodes(H)
 
-    # Convert to NumPy arrays for numba compatibility
+    # Convert to NumPy arrays for CUDA compatibility
     bits_hist = np.array(bits_hist, dtype=np.int64)
     nodes_hist = np.array(nodes_hist, dtype=np.int64)
 
     # Flatten `bits_values` and `nodes_values` for compatibility
     bits_values_flat = np.concatenate(bits_values).astype(np.int64)
     nodes_values_flat = np.concatenate(nodes_values).astype(np.int64)
-
-    # Determine solver based on LDPC matrix properties
-    _n_bits = np.unique(H.sum(axis=0))
-    _n_nodes = np.unique(H.sum(axis=1))
-
-    if len(_n_bits) == 1 and len(_n_nodes) == 1:
-        print("Regular LDPC matrix detected.")
-        solver = logbp_cuda  # Regular LDPC
-    else:
-        print("Irregular LDPC matrix detected.")
-        solver = logbp_cuda  # Irregular LDPC
 
     var = 10 ** (-snr / 10)
 
@@ -43,22 +35,11 @@ def decode(H, y, snr, maxiter=1000):
     Lc = 2 * y / var
     _, n_messages = y.shape
 
-    Lq = np.zeros(shape=(m, n, n_messages), dtype=np.float64)
-    Lr = np.zeros(shape=(m, n, n_messages), dtype=np.float64)
+    # Run solver
+    Lq, Lr, L_posteriori = logbp_cuda(H_sparse, Lc, maxiter)
 
-    for n_iter in range(maxiter):
-        # Updated solver call with only 8 arguments
-        Lq, Lr, L_posteriori = solver(
-            bits_hist, bits_values_flat,
-            nodes_hist, nodes_values_flat,
-            Lc, Lq, Lr, n_iter
-        )
-        x = np.array(L_posteriori <= 0).astype(int)
-        product = incode(H, x)
-        if product:
-            break
-
-    if n_iter == maxiter - 1:
+    x = np.array(L_posteriori <= 0).astype(int)
+    if not incode(H, x):
         warnings.warn("""Decoding stopped before convergence. You may want
                        to increase maxiter""")
     return x.squeeze()
@@ -102,37 +83,31 @@ def logbp_cuda_sparse(data, indices, indptr, Lc, Lq, Lr, n_iter, L_posteriori):
             posterior += Lr[idx, ty, 0]
         L_posteriori[ty, 0] = posterior
 
+
 def ensure_compatible_sparse(matrix):
     """
     Ensures the input is a CSR sparse matrix with a supported type (float64).
     """
     if not isspmatrix_csr(matrix):
-        if not isinstance(matrix, cp.ndarray):
-            raise ValueError("Input must be a CuPy array or a CSR matrix.")
+        if not isinstance(matrix, np.ndarray):
+            raise ValueError("Input must be a NumPy array or a CSR matrix.")
         # Convert to float64 and then to CSR
-        matrix = csr_matrix(matrix.astype(cp.float64))
-    elif matrix.dtype != cp.float64:
+        matrix = csr_matrix(matrix.astype(np.float64))
+    elif matrix.dtype != np.float64:
         # Convert data type to float64 if necessary
-        matrix = matrix.astype(cp.float64)
+        matrix = matrix.astype(np.float64)
     return matrix
 
-def ensure_compatible_dense(array, dtype=cp.float64):
+
+def ensure_compatible_dense(array, dtype=np.float64):
     """
     Ensures the input is a dense array with the correct dtype.
     """
-    if not isinstance(array, cp.ndarray):
-        raise ValueError("Input must be a CuPy array.")
+    if not isinstance(array, np.ndarray):
+        raise ValueError("Input must be a NumPy array.")
     if array.dtype != dtype:
         array = array.astype(dtype)
     return array
-
-def validate_inputs(sparse_matrix, Lc):
-    """
-    Validates and prepares inputs for the solver.
-    """
-    sparse_matrix = ensure_compatible_sparse(sparse_matrix)
-    Lc = ensure_compatible_dense(Lc, dtype=cp.float64)
-    return sparse_matrix, Lc
 
 
 def logbp_cuda(sparse_matrix, Lc, n_iter):
@@ -143,8 +118,7 @@ def logbp_cuda(sparse_matrix, Lc, n_iter):
     n_messages = Lc.shape[1]
 
     # Convert sparse matrix to CSR format with compatible type
-    if not isspmatrix_csr(sparse_matrix):
-        sparse_matrix = csr_matrix(sparse_matrix.astype(cp.float64))
+    sparse_matrix = ensure_compatible_sparse(sparse_matrix)
 
     # Extract CSR components
     data = sparse_matrix.data
@@ -186,14 +160,8 @@ def get_message(tG, x):
     if k > len(x):
         raise ValueError(f"Inconsistent dimensions: tG requires {k} columns, but x has {len(x)} elements.")
 
-    print(f"Input x dimensions: {len(x)}, tG dimensions: {tG.shape}")  # Debugging
-
     # Gaussian elimination to reduce the system
     rtG, rx = gausselimination(tG, x)
-
-    # Ensure rx has at least `k` elements before processing
-    if len(rx) < k:
-        raise ValueError(f"rx has {len(rx)} elements, expected at least {k}.")
 
     # Extract message bits
     message = np.zeros(k).astype(int)

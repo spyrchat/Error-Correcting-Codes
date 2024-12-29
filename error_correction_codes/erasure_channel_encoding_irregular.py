@@ -1,6 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from decoder import decode, get_message
+from decoder_cuda import decode, get_message
 from construct_irregular_ldpc import construct_irregular_ldpc
 import os
 from encoder import encode
