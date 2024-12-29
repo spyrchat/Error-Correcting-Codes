@@ -1,10 +1,10 @@
 import numpy as np
-from construct_irregular_ldpc import construct_irregular_ldpc  # Import the function
+from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc  # Import the function
 
 import math
 import numpy as np
 from scipy.sparse import csr_matrix
-from construct_irregular_ldpc import construct_irregular_ldpc
+from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc
 
 def c_avg_to_rho(c_avg):
     """

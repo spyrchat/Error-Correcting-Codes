@@ -112,17 +112,22 @@ def fm1(y, sigma):
 
 
 def _bitsandnodes(H):
-    """Return bits and nodes of a parity-check matrix H."""
-    if type(H) != scipy.sparse.csr_matrix:
-        bits_indices, bits = np.where(H)
-        nodes_indices, nodes = np.where(H.T)
-    else:
-        bits_indices, bits = scipy.sparse.find(H)[:2]
-        nodes_indices, nodes = scipy.sparse.find(H.T)[:2]
-    bits_histogram = np.bincount(bits_indices)
-    nodes_histogram = np.bincount(nodes_indices)
+    """Extract bit and node degrees for irregular LDPC matrices."""
+    H = H.astype(int)  # Ensure binary matrix
+    m, n = H.shape
 
-    return bits_histogram, bits, nodes_histogram, nodes
+    # Check node to variable node connections
+    bits_hist = H.sum(axis=1).A1 if hasattr(H, 'A1') else H.sum(axis=1)  # Row sums
+    bits_values = [np.where(row)[0] for row in H]  # Indices of non-zero entries per row
+
+    # Variable node to check node connections
+    nodes_hist = H.sum(axis=0).A1 if hasattr(H, 'A1') else H.sum(axis=0)  # Column sums
+    nodes_values = [np.where(H[:, col])[0] for col in range(n)]  # Indices of non-zero entries per column
+
+    # Return lists without converting to arrays
+    return bits_hist.tolist(), bits_values, nodes_hist.tolist(), nodes_values
+
+
 
 
 def bits2i(H, i):

@@ -1,8 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from pyldpc import encode, decode, get_message
+from decoder import decode, get_message
 from construct_irregular_ldpc import construct_irregular_ldpc
 import os
+from encoder import encode
 
 def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_variable_nodes, lambda_dist, rho_dist, snr_db=10, num_iterations=1000, plot_interval=1000, verbose=False):
     """

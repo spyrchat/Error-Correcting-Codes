@@ -4,8 +4,13 @@ matplotlib.use('Agg')  # Non-interactive backend for multiprocessing safe plotti
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-from erasure_channel_encoding_irregular import simulate_irregular_ldpc_erasure_correction
 from multiprocessing import Pool
+
+# Import the irregular LDPC simulation function directly
+from erasure_channel_encoding_irregular import simulate_irregular_ldpc_erasure_correction
+import sys
+import os
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 Lambda = np.array([
     0.3442, 1.715e-06, 1.441e-06, 1.135e-06, 7.939e-07, 4.122e-07, 0, 0, 0, 0, 
