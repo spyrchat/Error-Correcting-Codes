@@ -2,8 +2,9 @@
 import numpy as np
 import warnings
 
-from numba import njit, int64, types, float64
+from numba import njit, int64, types, float64, prange
 from utils import binaryproduct, gausselimination, check_random_state, incode, _bitsandnodes
+
 
 def decode(H, y, snr, maxiter=1000):
     """Decode a Gaussian noise corrupted n bits message using BP algorithm."""
@@ -25,8 +26,10 @@ def decode(H, y, snr, maxiter=1000):
     _n_nodes = np.unique(H.sum(axis=1))
 
     if len(_n_bits) == 1 and len(_n_nodes) == 1:
+        print("Regular LDPC matrix detected.")
         solver = _logbp_numba_regular  # Regular LDPC
     else:
+        print("Irregular LDPC matrix detected.")
         solver = _logbp_numba  # Irregular LDPC
 
     var = 10 ** (-snr / 10)
@@ -59,44 +62,44 @@ def decode(H, y, snr, maxiter=1000):
     return x.squeeze()
 
 
-
-
-output_type_log2 = types.Tuple((float64[:, :, :], float64[:, :, :],
-                               float64[:, :]))
-
-
-# Define the output type for Numba-compiled functions
+# Define the output type for the _logbp_numba function
 output_type_log2 = types.Tuple((float64[:, :, :], float64[:, :, :], float64[:, :]))
 
 @njit(output_type_log2(int64[:], int64[:], int64[:], int64[:], float64[:, :],
-                       float64[:, :, :], float64[:, :, :], int64), cache=True)
+                       float64[:, :, :], float64[:, :, :], int64), cache=True, parallel=True)
 def _logbp_numba(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n_iter):
     """Perform inner LogBP solver for irregular LDPC matrices."""
     m, n, n_messages = Lr.shape
 
-    bits_counter = 0  # Keeps track of bit connections in flattened arrays
-    for i in range(m):
-        ff = bits_hist[i]  # Degree of check node i
-        ni = bits_values[bits_counter: bits_counter + ff]  # Connected variable nodes
+    bits_counter = 0
+    print(f"Starting LogBP for {m} check nodes and {n} variable nodes")
+    for i in prange(m):  # Parallelize over check nodes
+        if i % 1000 == 0:
+            print(f"Processing check node {i}/{m}...")
+
+        ff = bits_hist[i]
+        ni = bits_values[bits_counter: bits_counter + ff]
         bits_counter += ff
-        
+
         for j in ni:
             nij = ni[:]
-
-            # Compute the product of tanh messages
-            X = np.ones(n_messages)
-            for kk in range(len(nij)):
+            tanh_buffer = np.tanh(0.5 * (Lc[nij] if n_iter == 0 else Lq[i, nij]))
+            tanh_product = np.ones(n_messages)
+            for kk in range(ff):
                 if nij[kk] != j:
-                    X *= np.tanh(0.5 * (Lc[nij[kk]] if n_iter == 0 else Lq[i, nij[kk]]))
+                    tanh_product *= tanh_buffer[kk]
 
-            num = 1 + X
-            denom = 1 - X
+            num = 1 + tanh_product
+            denom = 1 - tanh_product
             Lr[i, j] = np.log(np.clip(num / denom, 1e-10, 1e10))
 
-    nodes_counter = 0  # Keeps track of node connections in flattened arrays
-    for j in range(n):
-        ff = nodes_hist[j]  # Degree of variable node j
-        mj = nodes_values[nodes_counter: nodes_counter + ff]  # Connected check nodes
+    nodes_counter = 0
+    for j in prange(n):  # Parallelize over variable nodes
+        if j % 1000 == 0:
+            print(f"Processing variable node {j}/{n}...")
+
+        ff = nodes_hist[j]
+        mj = nodes_values[nodes_counter: nodes_counter + ff]
         nodes_counter += ff
 
         for i in mj:
@@ -106,16 +109,20 @@ def _logbp_numba(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n
                 if mji[kk] != i:
                     Lq[i, j] += Lr[mji[kk], j]
 
-    # Compute posterior log-likelihood ratios
     L_posteriori = np.zeros((n, n_messages))
     nodes_counter = 0
-    for j in range(n):
+    for j in prange(n):
+        if j % 1000 == 0:
+            print(f"Calculating posterior for node {j}/{n}...")
+
         ff = nodes_hist[j]
         mj = nodes_values[nodes_counter: nodes_counter + ff]
         nodes_counter += ff
         L_posteriori[j] = Lc[j] + Lr[mj, j].sum(axis=0)
 
+    print("LogBP computation completed.")
     return Lq, Lr, L_posteriori
+
 
 @njit(output_type_log2(int64[:], int64[:, :], int64[:], int64[:, :],
                        float64[:, :], float64[:, :, :], float64[:, :, :], int64), cache=True)
