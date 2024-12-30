@@ -4,6 +4,7 @@ from idlelib.iomenu import errors
 import numpy as np
 import matplotlib.pyplot as plt
 
+
 def hamming_coding(original):
     # Hamming(7,4) generator matrix
     G = np.array([[1, 0, 0, 0, 1, 1, 0],
@@ -14,8 +15,10 @@ def hamming_coding(original):
     codeword = (original @ G) % 2
     return codeword
 
+
 def bpsk_modulation(codeword):
     return np.array([1 if bit == 1 else -1 for bit in codeword])
+
 
 def add_awgn(bpsk_codeword, snr_db):
     snr = 10.0 ** (snr_db / 10.0)
@@ -24,9 +27,12 @@ def add_awgn(bpsk_codeword, snr_db):
     noisy_codeword = bpsk_codeword + noise
     return noisy_codeword
 
+
 def demodulator(noisy_codeword):
-    received_codeword = np.array([1 if bit >= 0 else 0 for bit in noisy_codeword])
+    received_codeword = np.array(
+        [1 if bit >= 0 else 0 for bit in noisy_codeword])
     return received_codeword
+
 
 def hamming_decoding(received_codeword, snr):
     # Hamming(7,4) parity-check matrix
@@ -56,13 +62,15 @@ def hamming_decoding(received_codeword, snr):
         # if theres an error, correct it
         received_codeword[error_position] ^= 1  # Flip the bit
         print(f"SNR = {snr} dB. Error found at bit position: {error_position}")
-        #print(f"Corrected Codeword: {received_codeword}")
+        # print(f"Corrected Codeword: {received_codeword}")
 
     return syndrome, received_codeword
+
 
 def error_calculation(message, received_codeword):
     errors = np.sum(received_codeword[:4] != message)
     return errors
+
 
 # simulation parameters
 snr_db = np.arange(0, 11)
@@ -70,24 +78,26 @@ num_messages = 10**6
 
 errors_per_snr = np.zeros(len(snr_db))
 
-noisy_bits_per_snr = {snr: [] for snr in snr_db}  # form (original_bit, noisy_bit)
+noisy_bits_per_snr = {snr: []
+                      for snr in snr_db}  # form (original_bit, noisy_bit)
 
 # Run the experiment for multiple messages
 for _ in range(num_messages):
     original = np.random.randint(0, 2, 4)  # random 4bit message
     print()
     print(f'Original Message: {original}')
-    #codeword = hamming_coding(original)
-    #print(f'Codeword: {codeword}')
+    # codeword = hamming_coding(original)
+    # print(f'Codeword: {codeword}')
     bpsk_codeword = bpsk_modulation(original)
     print(f'BPSK Modulation: {bpsk_codeword}')
     print('-------------------------------')
 
     for snr_value in snr_db:
         noisy_codeword = add_awgn(bpsk_codeword, snr_value)
-        noisy_bits_per_snr[snr_value].extend(zip(bpsk_codeword,noisy_codeword))
+        noisy_bits_per_snr[snr_value].extend(
+            zip(bpsk_codeword, noisy_codeword))
         received_codeword = demodulator(noisy_codeword)
-        #syndrome, final_codeword = hamming_decoding(received_codeword, snr_value)
+        # syndrome, final_codeword = hamming_decoding(received_codeword, snr_value)
         errors = error_calculation(original, received_codeword)
         errors_per_snr[snr_value] += errors
 
@@ -102,7 +112,8 @@ bit_rate_per_snr = 1 - ber_per_snr
 
 print("Summary:")
 for snr, errors, ber, bit_rate in zip(snr_db, errors_per_snr, ber_per_snr, bit_rate_per_snr):
-    print(f"SNR = {snr} dB: Total Errors = {errors}, BER = {ber:.5f}, Bit Rate = {bit_rate:.5f}")
+    print(f"SNR = {snr} dB: Total Errors = {errors}, BER = {
+          ber:.5f}, Bit Rate = {bit_rate:.5f}")
 
 print(f"Total Errors across all SNRs = {errors_per_snr.sum()}")
 
@@ -136,9 +147,12 @@ plt.savefig('BPSK_1.png')
 plt.figure(figsize=(12, 10))
 
 legend_elements = [
-    plt.Line2D([0], [0], marker='o', color='g', label='Transmitted Bits', markersize=8, linestyle='None'),
-    plt.Line2D([0], [0], marker='x', color='blue', label='Noisy (+1)', markersize=8, linestyle='None'),
-    plt.Line2D([0], [0], marker='x', color='red', label='Noisy (-1)', markersize=8, linestyle='None')
+    plt.Line2D([0], [0], marker='o', color='g',
+               label='Transmitted Bits', markersize=8, linestyle='None'),
+    plt.Line2D([0], [0], marker='x', color='blue',
+               label='Noisy (+1)', markersize=8, linestyle='None'),
+    plt.Line2D([0], [0], marker='x', color='red',
+               label='Noisy (-1)', markersize=8, linestyle='None')
 ]
 
 for idx, snr_value in enumerate(snr_db):
@@ -151,7 +165,8 @@ for idx, snr_value in enumerate(snr_db):
                             original_bit == -1]
 
     # plot original bits
-    plt.scatter([-1, 1], [0, 0], marker='o', color='g', s=150, label='Transmitted Bits')
+    plt.scatter([-1, 1], [0, 0], marker='o', color='g',
+                s=150, label='Transmitted Bits')
 
     # plot noisy bits
     plt.scatter(transmitted_positive, [0] * len(transmitted_positive), marker='x', color='blue', label='Noisy (+1)',
@@ -165,7 +180,8 @@ for idx, snr_value in enumerate(snr_db):
     plt.grid()
 
 
-plt.figlegend(handles=legend_elements, loc='lower center', ncol=3, frameon=False, fontsize=10)
+plt.figlegend(handles=legend_elements, loc='lower center',
+              ncol=3, frameon=False, fontsize=10)
 
 plt.tight_layout(rect=[0, 0.05, 1, 1])
 

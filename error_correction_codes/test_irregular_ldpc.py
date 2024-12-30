@@ -1,10 +1,12 @@
 import numpy as np
-from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc  # Import the function
+# Import the function
+from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc
 
 import math
 import numpy as np
 from scipy.sparse import csr_matrix
 from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc
+
 
 def c_avg_to_rho(c_avg):
     """
@@ -19,8 +21,9 @@ def c_avg_to_rho(c_avg):
     ct = math.floor(c_avg)
     r1 = ct * (ct + 1 - c_avg) / c_avg
     r2 = (c_avg - ct * (ct + 1 - c_avg)) / c_avg
-    rho_poly = np.concatenate(([r2, r1], np.zeros(ct - 1))) 
+    rho_poly = np.concatenate(([r2, r1], np.zeros(ct - 1)))
     return rho_poly
+
 
 def validate_ldpc(H, G):
     """
@@ -58,6 +61,7 @@ def validate_ldpc(H, G):
 
     print("Validation successful: Generated codeword satisfies H.")
     return True
+
 
 def main():
     # Parameters from LDPC design
@@ -101,7 +105,6 @@ def main():
     except ValueError as e:
         print(f"Error: {e}")
 
+
 if __name__ == "__main__":
     main()
-
-

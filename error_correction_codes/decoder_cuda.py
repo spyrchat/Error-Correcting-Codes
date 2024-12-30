@@ -10,7 +10,6 @@ from numba.cuda.cudadrv.error import CudaSupportError
 from numba.cuda import current_context
 
 
-
 def decode(H, y, snr, maxiter=100):
     """Decode a Gaussian noise corrupted n bits message using BP algorithm."""
     m, n = H.shape
@@ -53,15 +52,14 @@ def decode(H, y, snr, maxiter=100):
     )
 
     # Decode the message
-    decoded_message = (L_posteriori <= 0).astype(np.int32)  # Convert to NumPy array for output
+    decoded_message = (L_posteriori <= 0).astype(
+        np.int32)  # Convert to NumPy array for output
 
     if not incode(H, decoded_message):
         warnings.warn(
             "Decoding stopped before convergence. You may want to increase maxiter."
         )
     return decoded_message.squeeze()
-
-
 
 
 def validate_array(array, expected_dim, expected_dtype, name):
@@ -80,9 +78,12 @@ def validate_array(array, expected_dim, expected_dtype, name):
     if not isinstance(array, cp.ndarray):
         raise ValueError(f"{name} must be a CuPy array.")
     if array.ndim != expected_dim:
-        raise ValueError(f"{name} must have {expected_dim} dimensions, but got {array.ndim}.")
+        raise ValueError(f"{name} must have {
+                         expected_dim} dimensions, but got {array.ndim}.")
     if array.dtype != expected_dtype:
-        raise ValueError(f"{name} must have dtype {expected_dtype}, but got {array.dtype}.")
+        raise ValueError(f"{name} must have dtype {
+                         expected_dtype}, but got {array.dtype}.")
+
 
 def validate_sparse_matrix(matrix):
     """
@@ -102,7 +103,8 @@ def validate_sparse_matrix(matrix):
         elif isinstance(matrix, cp.ndarray):  # Convert CuPy dense array to CSR
             matrix = csr_matrix(matrix.astype(cp.float64))
         else:
-            raise ValueError("Input must be a NumPy array, CuPy array, or a CSR sparse matrix.")
+            raise ValueError(
+                "Input must be a NumPy array, CuPy array, or a CSR sparse matrix.")
     elif matrix.dtype != cp.float64:  # Ensure the matrix is of type float64
         matrix = matrix.astype(cp.float64)
     return matrix
@@ -165,6 +167,7 @@ def run_cuda_solver(bits_hist, bits_values, nodes_hist, nodes_values, Lc, n_iter
     L_posteriori = cp.asnumpy(d_L_posteriori)
     return Lq, Lr, L_posteriori
 
+
 @cuda.jit
 def logbp_cuda(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n_iter, L_posteriori):
     """
@@ -179,15 +182,18 @@ def logbp_cuda(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n_i
         tanh_product = 1.0
         for i in range(ff):
             idx = start_idx + i
-            scalar_val = 0.5 * Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
+            scalar_val = 0.5 * \
+                Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
             tanh_val = math.tanh(scalar_val)
             tanh_product *= tanh_val
 
         for i in range(ff):
             idx = start_idx + i
-            scalar_val = 0.5 * Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
+            scalar_val = 0.5 * \
+                Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
             tanh_val = math.tanh(scalar_val)
-            result = (1 + tanh_product / tanh_val) / (1 - tanh_product / tanh_val)
+            result = (1 + tanh_product / tanh_val) / \
+                (1 - tanh_product / tanh_val)
             Lr[tx, idx, 0] = math.log(max(result, 1e-10))
 
     if ty < nodes_hist.shape[0]:
@@ -206,20 +212,23 @@ def logbp_cuda(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n_i
             posterior += Lr[idx, ty, 0]
         L_posteriori[ty, 0] = posterior
 
+
 def get_message(tG, x):
     """Compute the original `n_bits` message from a `n_code` codeword `x`."""
     n, k = tG.shape
     if len(x) != n:
-        raise ValueError(f"Inconsistent dimensions: x has {len(x)} elements, but tG has {n} rows.")
-    
+        raise ValueError(f"Inconsistent dimensions: x has {
+                         len(x)} elements, but tG has {n} rows.")
+
     # Gaussian elimination to reduce the system
-    rtG, rx = gausselimination(tG, x[:k])  # Slice x to match the row dimension of tG
-    
+    # Slice x to match the row dimension of tG
+    rtG, rx = gausselimination(tG, x[:k])
+
     # Extract message bits
     message = np.zeros(k).astype(int)
     message[k - 1] = rx[k - 1]
     for i in reversed(range(k - 1)):
         message[i] = rx[i]
         message[i] -= binaryproduct(rtG[i, i + 1:], message[i + 1:])
-    
+
     return abs(message)

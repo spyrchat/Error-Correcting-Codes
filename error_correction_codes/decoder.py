@@ -63,7 +63,9 @@ def decode(H, y, snr, maxiter=1000):
 
 
 # Define the output type for the _logbp_numba function
-output_type_log2 = types.Tuple((float64[:, :, :], float64[:, :, :], float64[:, :]))
+output_type_log2 = types.Tuple(
+    (float64[:, :, :], float64[:, :, :], float64[:, :]))
+
 
 @njit(output_type_log2(int64[:], int64[:], int64[:], int64[:], float64[:, :],
                        float64[:, :, :], float64[:, :, :], int64), cache=True, parallel=True)
@@ -83,7 +85,8 @@ def _logbp_numba(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n
 
         for j in ni:
             nij = ni[:]
-            tanh_buffer = np.tanh(0.5 * (Lc[nij] if n_iter == 0 else Lq[i, nij]))
+            tanh_buffer = np.tanh(
+                0.5 * (Lc[nij] if n_iter == 0 else Lq[i, nij]))
             tanh_product = np.ones(n_messages)
             for kk in range(ff):
                 if nij[kk] != j:
@@ -140,7 +143,8 @@ def _logbp_numba_regular(bits_hist, bits_values, nodes_hist, nodes_values, Lc, L
             X = np.ones(n_messages)
             for kk in range(len(nij)):
                 if nij[kk] != j:
-                    X *= np.tanh(0.5 * (Lc[nij[kk]] if n_iter == 0 else Lq[i, nij[kk]]))
+                    X *= np.tanh(0.5 * (Lc[nij[kk]]
+                                 if n_iter == 0 else Lq[i, nij[kk]]))
 
             num = 1 + X
             denom = 1 - X
@@ -169,12 +173,15 @@ def get_message(tG, x):
     """Compute the original `n_bits` message from a `n_code` codeword `x`."""
     n, k = tG.shape
     if len(x) != n:
-        raise ValueError(f"Inconsistent dimensions: x has {len(x)} elements, but tG has {n} rows.")
+        raise ValueError(f"Inconsistent dimensions: x has {
+                         len(x)} elements, but tG has {n} rows.")
 
     if k > len(x):
-        raise ValueError(f"Inconsistent dimensions: tG requires {k} columns, but x has {len(x)} elements.")
+        raise ValueError(f"Inconsistent dimensions: tG requires {
+                         k} columns, but x has {len(x)} elements.")
 
-    print(f"Input x dimensions: {len(x)}, tG dimensions: {tG.shape}")  # Debugging
+    print(f"Input x dimensions: {len(x)}, tG dimensions: {
+          tG.shape}")  # Debugging
 
     # Gaussian elimination to reduce the system
     rtG, rx = gausselimination(tG, x)

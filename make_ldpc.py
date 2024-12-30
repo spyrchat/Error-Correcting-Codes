@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 import utils
 
+
 def parity_check_matrix_irregular(n_code, lambda_dist, rho_dist, seed=None):
     """
     Build an irregular Parity-Check Matrix H based on degree distributions.
@@ -20,8 +21,10 @@ def parity_check_matrix_irregular(n_code, lambda_dist, rho_dist, seed=None):
     rng = np.random.default_rng(seed)
 
     # Calculate total number of edges
-    n_edges = int(n_code * sum([(i + 1) * lambda_dist[i] for i in range(len(lambda_dist))]))
-    n_equations = int(n_edges / sum([(j + 1) * rho_dist[j] for j in range(len(rho_dist))]))
+    n_edges = int(n_code * sum([(i + 1) * lambda_dist[i]
+                  for i in range(len(lambda_dist))]))
+    n_equations = int(
+        n_edges / sum([(j + 1) * rho_dist[j] for j in range(len(rho_dist))]))
 
     H = np.zeros((n_equations, n_code), dtype=int)
 
@@ -46,6 +49,7 @@ def parity_check_matrix_irregular(n_code, lambda_dist, rho_dist, seed=None):
         edge_index += 1
 
     return H
+
 
 def coding_matrix(H, sparse=True):
     """Return the generating coding matrix G given the LDPC matrix H.
@@ -79,6 +83,7 @@ def coding_matrix(H, sparse=True):
 
     return tG
 
+
 def coding_matrix_systematic(H, sparse=True):
     """Compute a coding matrix G in systematic format with an identity block.
 
@@ -99,12 +104,14 @@ def coding_matrix_systematic(H, sparse=True):
     n_bits = n_code - sum([a.any() for a in Hrowreduced])
 
     while True:
-        zeros = [i for i in range(min(n_equations, n_code)) if not Hrowreduced[i, i]]
+        zeros = [i for i in range(min(n_equations, n_code))
+                 if not Hrowreduced[i, i]]
         if len(zeros):
             indice_colonne_a = min(zeros)
         else:
             break
-        list_ones = [j for j in range(indice_colonne_a + 1, n_code) if Hrowreduced[indice_colonne_a, j]]
+        list_ones = [j for j in range(
+            indice_colonne_a + 1, n_code) if Hrowreduced[indice_colonne_a, j]]
         if len(list_ones):
             indice_colonne_b = min(list_ones)
         else:
@@ -138,9 +145,11 @@ def coding_matrix_systematic(H, sparse=True):
 
     G_systematic = np.zeros((n_bits, n_code), dtype=int)
     G_systematic[:, :n_bits] = np.identity(n_bits)
-    G_systematic[:, n_bits:] = (Hrowreduced[:n_code - n_bits, n_code - n_bits:]).T
+    G_systematic[:, n_bits:] = (
+        Hrowreduced[:n_code - n_bits, n_code - n_bits:]).T
 
     return H_new, G_systematic.T
+
 
 def make_ldpc_irregular(n_code, lambda_dist=None, rho_dist=None, systematic=False, sparse=True, seed=None):
     """

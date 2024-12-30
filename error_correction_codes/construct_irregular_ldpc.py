@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse import csr_matrix
 from utils import gaussian_elimination_mod2
 
+
 def construct_irregular_ldpc(n, Lambda, rho):
     """
     Constructs an irregular LDPC parity-check matrix and generator matrix.
@@ -15,19 +16,23 @@ def construct_irregular_ldpc(n, Lambda, rho):
         H (scipy.sparse.csr_matrix): The parity-check matrix.
         G (scipy.sparse.csr_matrix): The generator matrix.
     """
-    Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1), Lambda[::-1])  # Reversed for correct order
-    rho_prime = np.dot(np.arange(1, len(rho) + 1), rho[::-1])  # Reversed for correct order
+    Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1),
+                          Lambda[::-1])  # Reversed for correct order
+    # Reversed for correct order
+    rho_prime = np.dot(np.arange(1, len(rho) + 1), rho[::-1])
     m = int(np.floor((Lambda_prime / rho_prime) * n))
 
     print(f"Computed Check Nodes (m): {m}, Variable Nodes (n): {n}")
     if m >= n:
-        raise ValueError(f"Invalid parameters: m = {m} exceeds or equals n = {n}.")
+        raise ValueError(f"Invalid parameters: m = {
+                         m} exceeds or equals n = {n}.")
 
     variable_sockets = []
     check_sockets = []
 
     for i in range(n):
-        degree = np.random.choice(np.arange(1, len(Lambda) + 1), p=Lambda[::-1])
+        degree = np.random.choice(
+            np.arange(1, len(Lambda) + 1), p=Lambda[::-1])
         variable_sockets.extend([i] * degree)
 
     for j in range(m):
@@ -78,7 +83,8 @@ def construct_irregular_ldpc(n, Lambda, rho):
         G_dense = np.hstack((P.T, I_k))
 
         if G_dense.shape != (k, n):
-            raise ValueError(f"Inconsistent G dimensions: Expected {(k, n)}, got {G_dense.shape}")
+            raise ValueError(f"Inconsistent G dimensions: Expected {
+                             (k, n)}, got {G_dense.shape}")
 
         G_sparse = csr_matrix(G_dense)
 
@@ -88,24 +94,24 @@ def construct_irregular_ldpc(n, Lambda, rho):
     return H_sparse, G_sparse
 
 
-
 def main():
     # Corrected Lambda(x) coefficients (highest order first)
     Lambda = np.array([
-        0.3442, 1.715e-06, 1.441e-06, 1.135e-06, 7.939e-07, 4.122e-07, 0, 0, 0, 0, 
+        0.3442, 1.715e-06, 1.441e-06, 1.135e-06, 7.939e-07, 4.122e-07, 0, 0, 0, 0,
         0.03145, 0.21, 0, 0.1383, 0.276
     ])
     Lambda /= Lambda.sum()  # Normalize to sum to 1
 
     # Provided Rho(x) coefficients (length 15, highest order first)
     rho = np.array([
-       0.50913838, 0.49086162, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 
+        0.50913838, 0.49086162, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
     ])
     rho /= rho.sum()  # Normalize to sum to 1
 
     # Design parameters
     design_rate = 0.744
-    Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1), Lambda[::-1])  # Reverse order
+    Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1),
+                          Lambda[::-1])  # Reverse order
     rho_prime = np.dot(np.arange(1, len(rho) + 1), rho[::-1])  # Reverse order
     n = int(np.ceil((rho_prime / (1 - design_rate)) ** 2))
 
