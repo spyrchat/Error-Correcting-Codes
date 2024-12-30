@@ -83,8 +83,15 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             message_bits = decoded_codeword[:k]  # Ensure it matches message length
             print(f"Message bits (from decoded codeword): {message_bits[:10]}... (first 10 bits)")
 
-            # Pass the extracted message bits to get_message
-            decoded_message = get_message(G, decoded_codeword[:G.shape[0]])
+            # Ensure the correct portion of decoded_codeword is passed to get_message
+            if decoded_codeword.shape[0] != G.shape[1]:
+                raise ValueError(
+                    f"Dimension mismatch: decoded_codeword has {decoded_codeword.shape[0]} elements, "
+                    f"but G expects {G.shape[1]} columns."
+            )
+
+            # Use only the relevant portion of decoded_codeword
+            decoded_message = get_message(G.T, decoded_codeword[:G.shape[1]])
             print(f"Decoded message: {decoded_message[:10]}... (first 10 bits)")
 
             # Calculate errors: Ignore erased bits
