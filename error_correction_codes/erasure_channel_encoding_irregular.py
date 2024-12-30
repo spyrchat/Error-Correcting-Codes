@@ -43,13 +43,9 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
         total_transmitted_bits = 0
 
         for iteration in range(num_iterations):
-            print(f"Iteration {iteration + 1}/{num_iterations}...")
-
             # Generate random message and encode it
             message = np.random.randint(0, 2, k)
             codeword = encode(G, message, snr=snr_db)
-            print(f"Generated message: {message[:10]}... (first 10 bits)")
-            print(f"Encoded codeword: {codeword[:10]}... (first 10 bits)")
 
             # Ensure codeword contains binary values (0 and 1)
             codeword = np.round(codeword).astype(int)
@@ -58,48 +54,63 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             transmitted_signal = 2 * codeword - 1
             noise = np.random.normal(0, noise_std, transmitted_signal.shape)
             received_signal = transmitted_signal + noise
-            print(f"Transmitted signal: {transmitted_signal[:10]}... (first 10 values)")
-            print(f"Received signal (with noise): {received_signal[:10]}... (first 10 values)")
 
             # Erasure condition
             erasures = np.abs(received_signal) < threshold
-            print(f"Erasure mask: {erasures[:10]}... (first 10 values)")
 
             # Prepare decoder input
             decoder_input = np.copy(received_signal)
             decoder_input[erasures] = 0  # Neutralize erased symbols
-            print(f"Decoder input: {decoder_input[:10]}... (first 10 values)")
 
             # Scale signal for decoding
             received_signal_scaled = 2 * decoder_input / noise_std_sq
-            print(f"Scaled received signal: {received_signal_scaled[:10]}... (first 10 values)")
 
             # Decode
-            print("Starting decoding...")
+            # Decode the received signal
             decoded_codeword = decode(H, received_signal_scaled, snr=snr_db, maxiter=100)
-            print(f"Decoded codeword: {decoded_codeword[:10]}... (first 10 bits)")
 
-            # Extract the first k bits (message bits) from the decoded codeword
-            message_bits = decoded_codeword[:k]  # Ensure it matches message length
-            print(f"Message bits (from decoded codeword): {message_bits[:10]}... (first 10 bits)")
+            # Extract the first `k` bits (message bits) from the decoded codeword
+            decoded_message_k = decoded_codeword[:k]
 
-            # Ensure the correct portion of decoded_codeword is passed to get_message
-            if decoded_codeword.shape[0] != G.shape[1]:
-                raise ValueError(
-                    f"Dimension mismatch: decoded_codeword has {decoded_codeword.shape[0]} elements, "
-                    f"but G expects {G.shape[1]} columns."
-            )
+            # Debugging: Print the shapes
+            print(f"decoded_codeword shape: {decoded_codeword.shape}")
+            print(f"decoded_message_k shape: {decoded_message_k.shape}")
+            print(f"First 10 decoded_message_k: {decoded_message_k[:10]}")
 
-            # Use only the relevant portion of decoded_codeword
-            decoded_message = get_message(G.T, decoded_codeword[:G.shape[1]])
-            print(f"Decoded message: {decoded_message[:10]}... (first 10 bits)")
+            # Create a full-length boolean array for non-erased bits
+            non_erased_indices_full = np.zeros_like(decoded_codeword, dtype=bool)
+            non_erased_indices_full[:erasures.shape[0]] = ~erasures  # Fill up to `erasures` length
 
-            # Calculate errors: Ignore erased bits
-            non_erased_indices = ~erasures[:k]
-            errors = np.sum(decoded_message[non_erased_indices] != message[non_erased_indices])
-            total_errors += errors
-            total_non_erased += np.sum(non_erased_indices)
-            total_transmitted_bits += np.sum(non_erased_indices)
+            # Slice for the first `k` bits
+            non_erased_indices_k = non_erased_indices_full[:k]
+
+            # Debugging: Print non-erased mask details
+            print(f"erasures shape: {erasures.shape}")
+            print(f"non_erased_indices_full shape: {non_erased_indices_full.shape}")
+            print(f"non_erased_indices_k shape: {non_erased_indices_k.shape}")
+            print(f"Sum of non-erased bits (k): {np.sum(non_erased_indices_k)}")
+
+            # Slice the message to match `k` length
+            valid_message = message[:k]
+
+            # Debugging: Print message details
+            print(f"message shape: {message.shape}")
+            print(f"valid_message shape: {valid_message.shape}")
+            print(f"First 10 valid_message: {valid_message[:10]}")
+
+            # Calculate errors only for non-erased indices (for the first `k` bits)
+            try:
+                errors = np.sum(decoded_message_k[non_erased_indices_k] != valid_message[non_erased_indices_k])
+            except IndexError as e:
+                print("IndexError occurred!")
+                print(f"decoded_message_k shape: {decoded_message_k.shape}")
+                print(f"non_erased_indices_k shape: {non_erased_indices_k.shape}")
+                print(f"valid_message shape: {valid_message.shape}")
+                raise e
+
+            # Debugging: Print errors
+            print(f"Errors: {errors}")
+
             print(f"Errors this iteration: {errors}, Total errors so far: {total_errors}")
 
             # Plot constellation diagram at intervals
