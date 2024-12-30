@@ -6,15 +6,34 @@ import os
 from encoder import encode
 
 
-def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_variable_nodes, lambda_dist, rho_dist, snr_db=10, num_iterations=100, plot_interval=1000, verbose=False):
+def simulate_irregular_ldpc_erasure_correction(
+    erasure_thresholds,
+    number_of_variable_nodes,
+    lambda_dist,
+    rho_dist,
+    snr_db=10,
+    num_iterations=100,
+    plot_interval=1000,
+    verbose=False
+):
     """
-    Simulate LDPC encoding, transmission with noise and erasures, and decoding.
+    Simulate LDPC encoding, transmission with noise and erasures, and decoding for a single SNR value.
+
+    Parameters:
+    - erasure_thresholds: List of thresholds for erasure detection.
+    - number_of_variable_nodes: Number of variable nodes in the LDPC code.
+    - lambda_dist: Degree distribution for variable nodes.
+    - rho_dist: Degree distribution for check nodes.
+    - snr_db: Signal-to-Noise Ratio in dB (single value).
+    - num_iterations: Number of iterations for simulation.
+    - plot_interval: Interval for saving constellation diagrams.
+    - verbose: Whether to print detailed debug information.
 
     Returns:
     - ser_results: Symbol Error Rates (SER) for each erasure threshold.
     - bit_rate_results: Bit Rates for each erasure threshold.
     """
-    print("Starting LDPC simulation...")
+    print(f"Starting LDPC simulation for SNR = {snr_db} dB...")
 
     # Generate LDPC matrices
     print("Generating LDPC matrices...")
@@ -28,6 +47,7 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
     ser_results = []
     bit_rate_results = []
 
+    # SNR and noise parameters
     snr_linear = 10 ** (snr_db / 10)
     noise_std = np.sqrt(1 / (2 * snr_linear))  # Noise standard deviation
     noise_std_sq = noise_std**2  # Precompute noise variance
@@ -39,8 +59,7 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
     print(f"Plots will be saved in: {plot_dir}")
 
     for threshold in erasure_thresholds:
-        print(f"\nStarting simulation for threshold {
-              threshold:.2f} (SNR = {snr_db} dB)")
+        print(f"\nStarting simulation for threshold {threshold:.2f}...")
         total_errors = 0
         total_non_erased = 0
         total_transmitted_bits = 0
@@ -68,12 +87,10 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             # Scale signal for decoding
             received_signal_scaled = 2 * decoder_input / noise_std_sq
 
-            # Decode
             # Decode the received signal
             decoded_codeword = decode(
                 H, received_signal_scaled, snr=snr_db, maxiter=100)
-
-            # Extract the first `k` bits (message bits) from the decoded codeword
+            # Extract the first `k` bits (message bits)
             decoded_message_k = decoded_codeword[:k]
 
             # Debugging: Print the shapes
@@ -81,19 +98,14 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             print(f"decoded_message_k shape: {decoded_message_k.shape}")
             print(f"First 10 decoded_message_k: {decoded_message_k[:10]}")
 
-            # Create a full-length boolean array for non-erased bits
-            non_erased_indices_full = np.zeros_like(
-                decoded_codeword, dtype=bool)
-            # Fill up to `erasures` length
-            non_erased_indices_full[:erasures.shape[0]] = ~erasures
-
-            # Slice for the first `k` bits
-            non_erased_indices_k = non_erased_indices_full[:k]
+            # Create a boolean array for non-erased bits (aligned to `k`)
+            # Initialize mask for `k` bits
+            non_erased_indices_k = np.zeros(k, dtype=bool)
+            # Fill up to `k` length
+            non_erased_indices_k[:len(erasures)] = ~erasures[:k]
 
             # Debugging: Print non-erased mask details
             print(f"erasures shape: {erasures.shape}")
-            print(f"non_erased_indices_full shape: {
-                  non_erased_indices_full.shape}")
             print(f"non_erased_indices_k shape: {non_erased_indices_k.shape}")
             print(
                 f"Sum of non-erased bits (k): {np.sum(non_erased_indices_k)}")
@@ -107,32 +119,23 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             print(f"First 10 valid_message: {valid_message[:10]}")
 
             # Calculate errors only for non-erased indices (for the first `k` bits)
-            try:
-                errors = np.sum(
-                    decoded_message_k[non_erased_indices_k] != valid_message[non_erased_indices_k])
+            errors = np.sum(
+                decoded_message_k[non_erased_indices_k] != valid_message[non_erased_indices_k]
+            )
+            print(f"Iteration {iteration}: Errors={
+                  errors}, Non-erased={np.sum(non_erased_indices_k)}")
+
+            total_errors += errors
+            total_non_erased += np.sum(non_erased_indices_k)
+            total_transmitted_bits += np.sum(non_erased_indices_k)
+
+            # Debugging error statistics
+            if verbose:
                 print(f"Iteration {iteration}: Errors={
                       errors}, Non-erased={np.sum(non_erased_indices_k)}")
-                total_errors += errors
-                total_non_erased += np.sum(non_erased_indices_k)
-                total_transmitted_bits += np.sum(non_erased_indices_k)
-
-            except IndexError as e:
-                print("IndexError occurred!")
-                print(f"decoded_message_k shape: {decoded_message_k.shape}")
-                print(f"non_erased_indices_k shape: {
-                      non_erased_indices_k.shape}")
-                print(f"valid_message shape: {valid_message.shape}")
-                raise e
-
-            print(f"Errors: {errors}")
-
-            print(f"Errors this iteration: {
-                  errors}, Total errors so far: {total_errors}")
 
             # Plot constellation diagram at intervals
             if iteration % plot_interval == 0:
-                print(f"Plotting constellation diagram at iteration {
-                      iteration}...")
                 plt.clf()
                 plt.scatter(transmitted_signal, np.zeros_like(
                     transmitted_signal), color='blue', label='Transmitted Symbols', s=50)
@@ -168,7 +171,7 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
                 plt.savefig(filename)
                 plt.close()
 
-        # SER and bit rate calculation
+        # SER and Bit Rate
         ser = total_errors / total_non_erased if total_non_erased > 0 else np.nan
         bit_rate = total_transmitted_bits / \
             (k * num_iterations) if total_transmitted_bits > 0 else 0

@@ -214,18 +214,33 @@ def logbp_cuda(bits_hist, bits_values, nodes_hist, nodes_values, Lc, Lq, Lr, n_i
 
 
 def get_message(tG, x):
-    """Compute the original `n_bits` message from a `n_code` codeword `x`."""
+    """Compute the original `n_bits` message from a `n_code` codeword `x`.
+
+    Parameters:
+    ----------
+    tG: array (n_code, n_bits) coding matrix tG.
+    x: array (n_code,) decoded codeword of length `n_code`.
+
+    Returns:
+    -------
+    message: array (n_bits,). Original binary message.
+    """
     n, k = tG.shape
+
+    # Ensure x has the same size as the number of rows in tG
     if len(x) != n:
         raise ValueError(f"Inconsistent dimensions: x has {
                          len(x)} elements, but tG has {n} rows.")
 
-    # Gaussian elimination to reduce the system
-    # Slice x to match the row dimension of tG
-    rtG, rx = gausselimination(tG, x[:k])
+    # Perform Gaussian elimination
+    rtG, rx = gausselimination(tG, x)
 
-    # Extract message bits
-    message = np.zeros(k).astype(int)
+    # Ensure rx matches the number of columns (k)
+    if len(rx) != k:
+        rx = np.pad(rx, (0, k - len(rx)), mode='constant')
+
+    # Extract the message bits
+    message = np.zeros(k, dtype=int)
     message[k - 1] = rx[k - 1]
     for i in reversed(range(k - 1)):
         message[i] = rx[i]

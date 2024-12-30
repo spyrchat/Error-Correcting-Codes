@@ -1,11 +1,10 @@
 import numpy as np
 # Import the function
-from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc
-
 import math
 import numpy as np
+import scipy
 from scipy.sparse import csr_matrix
-from error_correction_codes.construct_irregular_ldpc import construct_irregular_ldpc
+from construct_irregular_ldpc import construct_irregular_ldpc
 
 
 def c_avg_to_rho(c_avg):
@@ -106,5 +105,275 @@ def main():
         print(f"Error: {e}")
 
 
+def gausselimination(A, b):
+    """Solve linear system in Z/2Z via Gauss Gauss elimination."""
+    if type(A) == scipy.sparse.csr_matrix:
+        A = A.toarray().copy()
+    else:
+        A = A.copy()
+    b = b.copy()
+    n, k = A.shape
+
+    for j in range(min(k, n)):
+        listedepivots = [i for i in range(j, n) if A[i, j]]
+        if len(listedepivots):
+            pivot = np.min(listedepivots)
+        else:
+            continue
+        if pivot != j:
+            aux = (A[j, :]).copy()
+            A[j, :] = A[pivot, :]
+            A[pivot, :] = aux
+
+            aux = b[j].copy()
+            b[j] = b[pivot]
+            b[pivot] = aux
+
+        for i in range(j+1, n):
+            if A[i, j]:
+                A[i, :] = abs(A[i, :]-A[j, :])
+                b[i] = abs(b[i]-b[j])
+
+    return A, b
+
+
+def gaussian_elimination_mod2(matrix):
+    """
+    Perform Gaussian elimination over GF(2) to reduce the matrix to row echelon form.
+
+    Parameters:
+        matrix (numpy.ndarray): A binary matrix (elements are 0 or 1).
+
+    Returns:
+        numpy.ndarray: Row echelon form of the input matrix over GF(2).
+    """
+    mat = matrix.copy()
+    rows, cols = mat.shape
+    pivot_row = 0
+
+    for col in range(cols):
+        # Debug: Print the matrix at each step
+        print(f"Column {col}, Pivot Row {pivot_row}:")
+        print(mat)
+
+        # Find the row with a 1 in the current column at or below the pivot row
+        for r in range(pivot_row, rows):
+            if mat[r, col] == 1:
+                # Swap the pivot row with the current row
+                mat[[pivot_row, r]] = mat[[r, pivot_row]]
+                print(f"Swapped rows {pivot_row} and {r}:")
+                print(mat)
+                break
+        else:
+            # No pivot in this column, move to the next column
+            continue
+
+        # Eliminate all 1s in the current column below the pivot row
+        for r in range(pivot_row + 1, rows):
+            if mat[r, col] == 1:
+                mat[r] ^= mat[pivot_row]
+                print(f"Row {r} XORed with Pivot Row {pivot_row}:")
+                print(mat)
+
+        # Move to the next pivot row
+        pivot_row += 1
+
+    return mat
+
+
+def binaryproduct(X, Y):
+    """Compute a matrix-matrix / vector product in Z/2Z."""
+    A = X.dot(Y)
+    try:
+        A = A.toarray()
+    except AttributeError:
+        pass
+    return A % 2
+
+
+def get_message(tG, x):
+    """
+    Compute the original `n_bits` message from a `n_code` codeword `x`.
+
+    Parameters:
+    ----------
+    tG: array (n_code, n_bits) coding matrix tG.
+    x: array (n_code,) decoded codeword of length `n_code`.
+
+    Returns:
+    -------
+    message: array (n_bits,). Original binary message.
+    """
+    n, k = tG.shape
+
+    # Ensure x has the same size as the number of rows in tG
+    if len(x) != n:
+        raise ValueError(f"Inconsistent dimensions: x has {
+                         len(x)} elements, but tG has {n} rows.")
+
+    # Perform Gaussian elimination
+    rtG, rx = gausselimination(tG, x)
+
+    # Debugging: Check dimensions after Gaussian elimination
+    print(f"rtG shape after Gaussian elimination: {rtG.shape}")
+    print(f"rx shape after Gaussian elimination: {rx.shape}")
+
+    # Truncate rtG and rx to ensure proper alignment with k
+    rtG = rtG[:k, :k]
+    rx = rx[:k]
+
+    # Ensure rtG is in upper triangular form for back-substitution
+    rtG = gaussian_elimination_mod2(rtG)
+
+    # Perform back-substitution to compute the message
+    message = np.zeros(k, dtype=int)
+    for i in reversed(range(k)):
+        message[i] = rx[i]
+        if i + 1 < k:
+            # XOR contributions from later message bits
+            contribution = (np.dot(rtG[i, i + 1:], message[i + 1:]) % 2)
+            print(f"Before back-substitution for message[{i}]: {message[i]}")
+            message[i] ^= contribution
+            print(f"After back-substitution for message[{i}]: {message[i]}")
+
+    # Final debug for the decoded message
+    print(f"Final decoded message: {message}")
+    return message
+
+
+def test_get_message():
+    def binaryproduct(a, b):
+        """Binary product for testing"""
+        return np.dot(a, b) % 2
+
+    # Test Cases
+    tests = [
+        {
+            "name": "Basic Test",
+            "tG": np.array([[1, 0], [1, 1]]),
+            "x": np.array([1, 0]),
+            "expected": np.array([1, 0]),
+        },
+        {
+            "name": "Edge Case: Single-bit message",
+            "tG": np.array([[1]]),
+            "x": np.array([1]),
+            "expected": np.array([1]),
+        },
+        {
+            "name": "Valid Codeword",
+            "tG": np.array([[1, 0, 1], [0, 1, 1], [1, 1, 0]]),
+            "x": np.array([1, 1, 0]),
+            "expected": np.array([1, 1]),
+        },
+        {
+            "name": "Mismatched Dimensions",
+            "tG": np.array([[1, 0, 1], [0, 1, 1], [1, 1, 0]]),
+            "x": np.array([1, 0]),
+            "expected": ValueError,
+        },
+    ]
+
+    # Run Tests
+    for test in tests:
+        print(f"Running test: {test['name']}")
+        try:
+            if isinstance(test["expected"], type) and issubclass(test["expected"], Exception):
+                try:
+                    get_message(test["tG"], test["x"])
+                except Exception as e:
+                    assert isinstance(e, test["expected"]), f"Expected {
+                        test['expected']}, but got {e}"
+                    print(f"Test '{test['name']}' passed.")
+            else:
+                result = get_message(test["tG"], test["x"])
+                assert np.array_equal(result, test["expected"]), f"Expected {
+                    test['expected']}, but got {result}"
+                print(f"Test '{test['name']}' passed.")
+        except Exception as e:
+            print(f"Test '{test['name']}' failed with error: {e}")
+
+
+def test_gaussian_elimination_and_message_retrieval():
+    test_cases = [
+        {
+            "name": "Basic Test",
+            "tG": np.array([[1, 0], [0, 1]], dtype=int),
+            "x": np.array([1, 0], dtype=int),
+            "expected_message": np.array([1, 0], dtype=int),
+        },
+        {
+            "name": "Edge Case: Single-bit message",
+            "tG": np.array([[1]], dtype=int),
+            "x": np.array([1], dtype=int),
+            "expected_message": np.array([1], dtype=int),
+        },
+        {
+            "name": "Valid Codeword",
+            "tG": np.array([[1, 0, 1], [0, 1, 1], [1, 1, 0]], dtype=int),
+            "x": np.array([1, 1, 0], dtype=int),
+            # Only the first two bits
+            "expected_message": np.array([1, 1], dtype=int),
+        },
+        {
+            "name": "Mismatched Dimensions",
+            "tG": np.array([[1, 0], [0, 1]], dtype=int),
+            "x": np.array([1, 0, 1], dtype=int),
+            "expected_error": ValueError,
+        },
+    ]
+
+    for test in test_cases:
+        print(f"Running test: {test['name']}")
+        try:
+            result = get_message(test["tG"], test["x"])
+            assert np.array_equal(result, test["expected_message"]), (
+                f"Test '{test['name']}' failed with error: "
+                f"Expected {test['expected_message']}, but got {result}"
+            )
+            print(f"Test '{test['name']}' passed.")
+        except Exception as e:
+            if "expected_error" in test and isinstance(e, test["expected_error"]):
+                print(f"Test '{test['name']}' passed.")
+            else:
+                print(f"Test '{test['name']}' failed with error: {e}")
+
+
+def test_gaussian_elimination_mod2():
+    tests = [
+        {
+            "name": "Basic Test",
+            "input": np.array([[1, 1, 0], [1, 0, 1], [0, 1, 1]]),
+            "expected": np.array([[1, 1, 0], [0, 1, 1], [0, 0, 1]]),
+        },
+        {
+            "name": "All Zero Rows",
+            "input": np.array([[0, 0, 0], [1, 1, 0], [0, 0, 0]]),
+            "expected": np.array([[1, 1, 0], [0, 0, 0], [0, 0, 0]]),
+        },
+        {
+            "name": "Fully Dense Matrix",
+            "input": np.array([[1, 1, 1], [1, 0, 1], [1, 1, 0]]),
+            "expected": np.array([[1, 1, 1], [0, 1, 0], [0, 0, 1]]),
+        },
+    ]
+
+    for test in tests:
+        print(f"Running test: {test['name']}")
+        result = gaussian_elimination_mod2(test["input"])
+        if np.array_equal(result, test["expected"]):
+            print(f"Test '{test['name']}' passed.")
+        else:
+            print(f"Test '{test['name']}' failed.")
+            print("Input:")
+            print(test["input"])
+            print("Result:")
+            print(result)
+            print("Expected:")
+            print(test["expected"])
+
+
 if __name__ == "__main__":
-    main()
+    test_get_message()
+    test_gaussian_elimination_and_message_retrieval()
+    test_gaussian_elimination_mod2()

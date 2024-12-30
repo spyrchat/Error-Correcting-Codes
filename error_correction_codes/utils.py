@@ -34,6 +34,7 @@ def binaryproduct(X, Y):
         pass
     return A % 2
 
+
 def gaussian_elimination_mod2(matrix):
     """
     Perform Gaussian elimination over GF(2) to reduce the matrix to row echelon form.
@@ -68,6 +69,7 @@ def gaussian_elimination_mod2(matrix):
         pivot_row += 1
 
     return mat
+
 
 def gaussjordan(X, change=0):
     """Compute the binary row reduced echelon form of X.
@@ -151,17 +153,19 @@ def _bitsandnodes(H):
     m, n = H.shape
 
     # Check node to variable node connections
-    bits_hist = H.sum(axis=1).A1 if hasattr(H, 'A1') else H.sum(axis=1)  # Row sums
-    bits_values = [np.where(row)[0] for row in H]  # Indices of non-zero entries per row
+    bits_hist = H.sum(axis=1).A1 if hasattr(
+        H, 'A1') else H.sum(axis=1)  # Row sums
+    # Indices of non-zero entries per row
+    bits_values = [np.where(row)[0] for row in H]
 
     # Variable node to check node connections
-    nodes_hist = H.sum(axis=0).A1 if hasattr(H, 'A1') else H.sum(axis=0)  # Column sums
-    nodes_values = [np.where(H[:, col])[0] for col in range(n)]  # Indices of non-zero entries per column
+    nodes_hist = H.sum(axis=0).A1 if hasattr(
+        H, 'A1') else H.sum(axis=0)  # Column sums
+    # Indices of non-zero entries per column
+    nodes_values = [np.where(H[:, col])[0] for col in range(n)]
 
     # Return lists without converting to arrays
     return bits_hist.tolist(), bits_values, nodes_hist.tolist(), nodes_values
-
-
 
 
 def bits2i(H, i):
