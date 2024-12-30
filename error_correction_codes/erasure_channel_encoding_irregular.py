@@ -113,7 +113,6 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
                 print(f"valid_message shape: {valid_message.shape}")
                 raise e
 
-            # Debugging: Print errors
             print(f"Errors: {errors}")
 
             print(f"Errors this iteration: {errors}, Total errors so far: {total_errors}")
