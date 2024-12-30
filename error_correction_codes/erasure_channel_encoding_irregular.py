@@ -88,7 +88,7 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             print(f"erasures shape: {erasures.shape}")
             print(f"non_erased_indices_full shape: {non_erased_indices_full.shape}")
             print(f"non_erased_indices_k shape: {non_erased_indices_k.shape}")
-            print(f"Sum of non-erased bits (k): {np.sum(non_erased_indices_k)}")
+            print(f"Sum of non-erased bits (k): {np.sum(non_erased_indices_k)}") 
 
             # Slice the message to match `k` length
             valid_message = message[:k]
@@ -101,6 +101,11 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
             # Calculate errors only for non-erased indices (for the first `k` bits)
             try:
                 errors = np.sum(decoded_message_k[non_erased_indices_k] != valid_message[non_erased_indices_k])
+                print(f"Iteration {iteration}: Errors={errors}, Non-erased={np.sum(non_erased_indices_k)}")
+                total_errors += errors
+                total_non_erased += np.sum(non_erased_indices_k)
+                total_transmitted_bits += np.sum(non_erased_indices_k)
+
             except IndexError as e:
                 print("IndexError occurred!")
                 print(f"decoded_message_k shape: {decoded_message_k.shape}")
@@ -146,7 +151,7 @@ def simulate_irregular_ldpc_erasure_correction(erasure_thresholds, number_of_var
                 plt.savefig(filename)
                 plt.close()
 
-        # Compute SER and bit rate
+        # SER and bit rate calculation
         ser = total_errors / total_non_erased if total_non_erased > 0 else np.nan
         bit_rate = total_transmitted_bits / (k * num_iterations) if total_transmitted_bits > 0 else 0
 
