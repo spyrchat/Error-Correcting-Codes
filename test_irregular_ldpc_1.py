@@ -213,11 +213,10 @@ def get_message(tG, x):
 
     # Perform Gaussian elimination
     rtG, rx = gausselimination(tG, x)
-    rx = x
 
     # Debugging: Check dimensions after Gaussian elimination
-    print(f"rtG Gaussian elimination: {rtG}")
-    print(f"rx after Gaussian elimination: {rx}")
+    print(f"rtG after Gaussian elimination: {rtG.shape}")
+    print(f"rx shape after Gaussian elimination: {rx.shape}")
 
     # Truncate rtG and rx to ensure proper alignment with k
     rtG = rtG[:k, :k]
@@ -225,7 +224,6 @@ def get_message(tG, x):
 
     # Ensure rtG is in upper triangular form for back-substitution
     rtG = gaussian_elimination_mod2(rtG)
-    print(f"rtG Gaussian elimination mod2: {rtG}")
 
     # Perform back-substitution to compute the message
     message = np.zeros(k, dtype=int)
@@ -242,6 +240,7 @@ def get_message(tG, x):
     print(f"Final decoded message: {message}")
     return message
 
+
 def test_get_message():
     def binaryproduct(a, b):
         """Binary product for testing"""
@@ -253,7 +252,7 @@ def test_get_message():
             "name": "Basic Test",
             "tG": np.array([[1, 0], [1, 1]]),
             "x": np.array([1, 0]),
-            "expected": np.array([1, 0]),
+            "expected": np.array([1, 1]),
         },
         {
             "name": "Edge Case: Single-bit message",
@@ -380,9 +379,7 @@ def test_gaussian_elimination_mod2():
 if __name__ == "__main__":
     test_get_message()
     print('test_get_message finished')
-    print("-------------------------")
     test_gaussian_elimination_and_message_retrieval()
     print('test_gaussian_elimination_and_message_retrieval finished')
-    print("-------------------------")
     test_gaussian_elimination_mod2()
     print('test_gaussian_elimination_mod2 finished')
