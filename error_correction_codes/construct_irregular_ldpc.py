@@ -21,6 +21,7 @@
 
 import utils
 from scipy.sparse import csr_matrix
+from collections import deque
 import copy
 import numpy as np
 from utils import gaussjordan
@@ -60,12 +61,8 @@ class peg():
         self.H = np.zeros((nchk, nvar), dtype=np.int32)
         self.sym_degrees = np.zeros(nvar, dtype=np.int32)
         self.chk_degrees = np.zeros(nchk, dtype=np.int32)
-        self.I_edge_chk2var = [[0 for _ in range(nvar)] for _ in range(nchk)]
-        self.I_edge_var2chk = [[0 for _ in range(nchk)] for _ in range(nvar)]
 
     def grow_edge(self, var, chk):
-        self.I_edge_chk2var[chk][var] = 1
-        self.I_edge_var2chk[var][chk] = 1
         self.H[chk, var] = 1
         self.sym_degrees[var] += 1
         self.chk_degrees[chk] += 1
@@ -74,56 +71,43 @@ class peg():
         var_list = np.zeros(self.nvar, dtype=np.int32)
         var_list[var] = 1
         cur_chk_list = np.zeros(self.nchk, dtype=np.int32)
-        new_chk_list = np.zeros(self.nchk, dtype=np.int32)
+        queue = deque([var])
 
-        chk_Q = []
-        var_Q = [var]
+        while queue:
+            current_var = queue.popleft()
+            for chk in np.where(self.H[:, current_var] == 1)[0]:
+                if cur_chk_list[chk] == 0:
+                    cur_chk_list[chk] = 1
+                    for next_var in np.where(self.H[chk, :] == 1)[0]:
+                        if var_list[next_var] == 0:
+                            var_list[next_var] = 1
+                            queue.append(next_var)
 
-        while True:
-            for _vars in var_Q:
-                for i in range(self.nchk):
-                    if self.H[i, _vars] == 1 and cur_chk_list[i] == 0:
-                        new_chk_list[i] = 1
-                        chk_Q.append(i)
-
-            var_Q = []
-            for _chks in chk_Q:
-                for j in range(self.nvar):
-                    if self.H[_chks, j] == 1 and var_list[j] == 0:
-                        var_list[j] = 1
-                        var_Q.append(j)
-
-            chk_Q = []
-            if np.sum(new_chk_list) == self.nchk:
-                return self.find_smallest_chk(cur_chk_list)
-            elif np.array_equal(new_chk_list, cur_chk_list):
-                return self.find_smallest_chk(cur_chk_list)
-            else:
-                cur_chk_list = np.copy(new_chk_list)
+        return self.find_smallest_chk(cur_chk_list)
 
     def find_smallest_chk(self, cur_chk_list):
-        indices = [i for i in range(len(cur_chk_list)) if cur_chk_list[i] == 0]
-        degrees = [self.chk_degrees[i] for i in indices]
-        return indices[find_smallest(degrees)]
-
-    def _print(self):
-        print("I_edge_chk2var")
-        for row in self.I_edge_chk2var:
-            print(row)
-        print("I_edge_var2chk")
-        for row in self.I_edge_var2chk:
-            print(row)
+        available_indices = np.where(cur_chk_list == 0)[0]
+        if len(available_indices) == 0:
+            print("No available check nodes, forcing connection.")
+            return np.argmin(self.chk_degrees)
+        available_degrees = self.chk_degrees[available_indices]
+        return available_indices[np.argmin(available_degrees)]
 
     def progressive_edge_growth(self):
         for var in range(self.nvar):
-            print(f"Edge growth at var {var}")
+            print(f"Growing edges for variable {var}")
             for k in range(self.degree_sequence[var]):
+                print(f"Attempting connection {k + 1} for variable {var}")
                 if k == 0:
-                    smallest_degree_chk = find_smallest(self.chk_degrees)
+                    smallest_degree_chk = np.argmin(self.chk_degrees)
                     self.grow_edge(var, smallest_degree_chk)
                 else:
-                    chk = self.bfs(var)
-                    self.grow_edge(var, chk)
+                    try:
+                        chk = self.bfs(var)
+                        self.grow_edge(var, chk)
+                    except ValueError as e:
+                        print(f"Error for variable {var}, edge {k + 1}: {e}")
+                        raise
 
 
 # Example Usage
