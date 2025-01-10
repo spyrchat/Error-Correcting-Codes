@@ -1,6 +1,5 @@
 import sys
 from erasure_channel_encoding_irregular import simulate_irregular_ldpc_erasure_correction
-from multiprocessing import Pool
 import os
 import numpy as np
 import matplotlib.pyplot as plt
@@ -13,24 +12,17 @@ matplotlib.use('Agg')
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
 
-Lambda = np.array([
-    0.3442, 1.715e-06, 1.441e-06, 1.135e-06, 7.939e-07, 4.122e-07, 0, 0, 0, 0,
-    0.03145, 0.21, 0, 0.1383, 0.276
-])
-Lambda /= Lambda.sum()  # Normalize to sum to 1
+try:
+    H = np.load("H_matrix.npy")
+    G = np.load("G_matrix.npy")
+    # G = np.transpose(G)
+except FileNotFoundError:
+    print("Error: One or both of the numpy files 'H_matrix.npy' and 'G_matrix.npy' were not found.")
+    exit(1)
+except Exception as e:
+    print(f"Error loading numpy files: {e}")
+    exit(1)
 
-# Provided Rho(x) coefficients (length 15, highest order first)
-rho = np.array([
-    0.50913838, 0.49086162, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-])
-rho /= rho.sum()  # Normalize to sum to 1
-
-# Design parameters
-design_rate = 0.744
-Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1),
-                      Lambda[::-1])  # Reverse order
-rho_prime = np.dot(np.arange(1, len(rho) + 1), rho[::-1])  # Reverse order
-n = int(np.ceil((rho_prime / (1 - design_rate)) ** 2))
 # Increase points for smooth curves
 erasure_thresholds = np.linspace(0.1, 1.0, 50)
 snr_values = 10
@@ -45,7 +37,7 @@ os.makedirs(plot_dir, exist_ok=True)  # Ensure plots directory exists
 def run_simulation_and_plot(snr):
     # Run the simulation
     ser_results, bit_rate_results = simulate_irregular_ldpc_erasure_correction(
-        erasure_thresholds, n, Lambda, rho, snr_db=snr)
+        H, G, erasure_thresholds, snr_db=snr)
 
     # Avoid log scale issues by ensuring no zero values
     ser_results = np.maximum(ser_results, 1e-10)

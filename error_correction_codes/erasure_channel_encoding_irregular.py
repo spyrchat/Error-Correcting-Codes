@@ -1,16 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from decoder_cuda import decode, get_message
-from construct_irregular_ldpc import construct_irregular_ldpc
 import os
 from encoder import encode
 
 
 def simulate_irregular_ldpc_erasure_correction(
+    H,
+    G,
     erasure_thresholds,
-    number_of_variable_nodes,
-    lambda_dist,
-    rho_dist,
     snr_db=10,
     num_iterations=100,
     plot_interval=1000,
@@ -20,7 +18,7 @@ def simulate_irregular_ldpc_erasure_correction(
     Simulate LDPC encoding, transmission with noise and erasures, and decoding for a single SNR value.
 
     Parameters:
-    - erasure_thresholds: List of thresholds for erasure detection.
+    - erasure_thresholds: List of thresholds for erasure detection. 
     - number_of_variable_nodes: Number of variable nodes in the LDPC code.
     - lambda_dist: Degree distribution for variable nodes.
     - rho_dist: Degree distribution for check nodes.
@@ -35,12 +33,6 @@ def simulate_irregular_ldpc_erasure_correction(
     """
     print(f"Starting LDPC simulation for SNR = {snr_db} dB...")
 
-    # Generate LDPC matrices
-    print("Generating LDPC matrices...")
-    H, G = construct_irregular_ldpc(
-        number_of_variable_nodes, lambda_dist, rho_dist)
-    H = H.toarray()
-    G = G.toarray()
     k = G.shape[1]  # Number of information bits
     print(f"Generated LDPC matrices: H.shape={H.shape}, G.shape={G.shape}")
 
@@ -87,52 +79,30 @@ def simulate_irregular_ldpc_erasure_correction(
             # Scale signal for decoding
             received_signal_scaled = 2 * decoder_input / noise_std_sq
 
-            # Decode the received signal
+            # Prepare decoder input
+            decoder_input = np.copy(received_signal)
+            decoder_input[erasures] = 0  # Neutralize erased symbols
+
+            # Scale signal for decoding
+            received_signal_scaled = 2 * decoder_input / noise_std**2
+
+            # Decode
             decoded_codeword = decode(
                 H, received_signal_scaled, snr=snr_db, maxiter=100)
-            # Extract the first `k` bits (message bits)
-            decoded_message_k = decoded_codeword[:k]
+            decoded_message = get_message(G, decoded_codeword)
 
-            # Debugging: Print the shapes
-            print(f"decoded_codeword shape: {decoded_codeword.shape}")
-            print(f"decoded_message_k shape: {decoded_message_k.shape}")
-            print(f"First 10 decoded_message_k: {decoded_message_k[:10]}")
-
-            # Create a boolean array for non-erased bits (aligned to `k`)
-            # Initialize mask for `k` bits
-            non_erased_indices_k = np.zeros(k, dtype=bool)
-            # Fill up to `k` length
-            non_erased_indices_k[:len(erasures)] = ~erasures[:k]
-
-            # Debugging: Print non-erased mask details
-            print(f"erasures shape: {erasures.shape}")
-            print(f"non_erased_indices_k shape: {non_erased_indices_k.shape}")
-            print(
-                f"Sum of non-erased bits (k): {np.sum(non_erased_indices_k)}")
-
-            # Slice the message to match `k` length
-            valid_message = message[:k]
-
-            # Debugging: Print message details
-            print(f"message shape: {message.shape}")
-            print(f"valid_message shape: {valid_message.shape}")
-            print(f"First 10 valid_message: {valid_message[:10]}")
-
-            # Calculate errors only for non-erased indices (for the first `k` bits)
+            # Calculate errors: Ignore erased bits
+            non_erased_indices = ~erasures[:k]
             errors = np.sum(
-                decoded_message_k[non_erased_indices_k] != valid_message[non_erased_indices_k]
-            )
-            print(f"Iteration {iteration}: Errors={
-                  errors}, Non-erased={np.sum(non_erased_indices_k)}")
-
+                decoded_message[non_erased_indices] != message[non_erased_indices])
             total_errors += errors
-            total_non_erased += np.sum(non_erased_indices_k)
-            total_transmitted_bits += np.sum(non_erased_indices_k)
+            total_non_erased += np.sum(non_erased_indices)
+            total_transmitted_bits += np.sum(non_erased_indices)
 
             # Debugging error statistics
             if verbose:
                 print(f"Iteration {iteration}: Errors={
-                      errors}, Non-erased={np.sum(non_erased_indices_k)}")
+                      errors}, Non-erased={np.sum(non_erased_indices)}")
 
             # Plot constellation diagram at intervals
             if iteration % plot_interval == 0:
