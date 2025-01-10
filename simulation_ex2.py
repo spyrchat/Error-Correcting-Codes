@@ -9,9 +9,9 @@ matplotlib.use('Agg')
 
 
 # Simulation parameters
-n = 49  # Length of codeword, adjusted to be a multiple of d_c
-d_v = 4  # Variable node degree for regular LDPC
-d_c = 7  # Check node degree for regular LDPC
+n = 3205  # Length of codeword, adjusted to be a multiple of d_c
+d_v = 2  # Variable node degree for regular LDPC
+d_c = 5  # Check node degree for regular LDPC
 # Increase points for smooth curves
 erasure_thresholds = np.linspace(0.1, 1.0, 50)
 snr_values = [3, 5, 10]

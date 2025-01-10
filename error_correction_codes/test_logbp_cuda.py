@@ -1,5 +1,13 @@
+import math
+from numba import cuda
+from cupyx.scipy.sparse import csr_matrix, isspmatrix_csr
+import cupy as cp
+from erasure_channel_encoding_irregular import simulate_irregular_ldpc_erasure_correction
+from decoder import get_message
 from utils import _bitsandnodes
-import numpy as np  
+import numpy as np
+
+
 def test_bitsandnodes():
     """Test the bitsandnodes function with a sample H matrix."""
     # Example parity-check matrix
@@ -16,15 +24,16 @@ def test_bitsandnodes():
     print("Nodes histogram (column sums):", nodes_hist)
     print("Nodes values (column connections):", nodes_values)
 
+
 # Run the test
 test_bitsandnodes()
 
-from decoder import get_message
 
 def test_get_message():
     # Example parameters
     tG = np.array([[1, 0, 0], [0, 1, 1], [1, 1, 0]])  # Corrected: k=3
-    x = np.array([1, 0, 1])  # Decoded codeword with length matching tG's columns
+    # Decoded codeword with length matching tG's columns
+    x = np.array([1, 0, 1])
 
     # Get original message
     message = get_message(tG, x)
@@ -33,24 +42,19 @@ def test_get_message():
     assert message.shape == (3,), f"Message shape mismatch: {message.shape}"
     print(f"get_message passed. message={message}")
 
+
 test_get_message()
 
-from erasure_channel_encoding_irregular import simulate_irregular_ldpc_erasure_correction
-
-
-
-import cupy as cp
-from cupyx.scipy.sparse import csr_matrix, isspmatrix_csr
-from numba import cuda
-import math
 
 @cuda.jit
 def logbp_cuda_sparse(data, indices, indptr, Lc, Lq, Lr, n_iter, L_posteriori):
     """
     CUDA implementation of the LogBP solver for sparse matrices.
     """
-    tx = cuda.threadIdx.x + cuda.blockIdx.x * cuda.blockDim.x  # Thread index for check nodes
-    ty = cuda.threadIdx.y + cuda.blockIdx.y * cuda.blockDim.y  # Thread index for variable nodes
+    tx = cuda.threadIdx.x + cuda.blockIdx.x * \
+        cuda.blockDim.x  # Thread index for check nodes
+    ty = cuda.threadIdx.y + cuda.blockIdx.y * \
+        cuda.blockDim.y  # Thread index for variable nodes
 
     # Horizontal Processing: Check Nodes -> Variable Nodes
     if tx < indptr.shape[0] - 1:  # Ensure within bounds
@@ -61,15 +65,18 @@ def logbp_cuda_sparse(data, indices, indptr, Lc, Lq, Lr, n_iter, L_posteriori):
         tanh_product = 1.0
         for i in range(start_idx, end_idx):  # Calculate tanh product
             idx = indices[i]
-            scalar_val = 0.5 * Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
+            scalar_val = 0.5 * \
+                Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
             tanh_val = math.tanh(scalar_val)
             tanh_product *= tanh_val
 
         for i in range(start_idx, end_idx):  # Update Lr
             idx = indices[i]
-            scalar_val = 0.5 * Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
+            scalar_val = 0.5 * \
+                Lc[idx, 0] if n_iter == 0 else 0.5 * Lq[tx, idx, 0]
             tanh_val = math.tanh(scalar_val)
-            result = (1 + tanh_product / tanh_val) / (1 - tanh_product / tanh_val)
+            result = (1 + tanh_product / tanh_val) / \
+                (1 - tanh_product / tanh_val)
             Lr[tx, idx, 0] = math.log(max(result, 1e-10))
 
     # Posterior Log-Likelihood Ratios
@@ -81,8 +88,7 @@ def logbp_cuda_sparse(data, indices, indptr, Lc, Lq, Lr, n_iter, L_posteriori):
             idx = indices[i]
             posterior += Lr[idx, ty, 0]
         L_posteriori[ty, 0] = posterior
-import cupy as cp
-from cupyx.scipy.sparse import csr_matrix, isspmatrix_csr
+
 
 def ensure_compatible_sparse(matrix):
     """
@@ -98,6 +104,7 @@ def ensure_compatible_sparse(matrix):
         matrix = matrix.astype(cp.float64)
     return matrix
 
+
 def ensure_compatible_dense(array, dtype=cp.float64):
     """
     Ensures the input is a dense array with the correct dtype.
@@ -107,6 +114,7 @@ def ensure_compatible_dense(array, dtype=cp.float64):
     if array.dtype != dtype:
         array = array.astype(dtype)
     return array
+
 
 def validate_inputs(sparse_matrix, Lc):
     """
@@ -140,7 +148,8 @@ def run_cuda_solver_sparse(sparse_matrix, Lc, n_iter):
     d_Lc = cuda.to_device(Lc)
     d_Lq = cuda.to_device(cp.zeros((m, n, n_messages), dtype=cp.float64))
     d_Lr = cuda.to_device(cp.zeros((m, n, n_messages), dtype=cp.float64))
-    d_L_posteriori = cuda.to_device(cp.zeros((n, n_messages), dtype=cp.float64))
+    d_L_posteriori = cuda.to_device(
+        cp.zeros((n, n_messages), dtype=cp.float64))
 
     # Configure CUDA blocks
     threads_per_block = (32, 32)
@@ -159,7 +168,6 @@ def run_cuda_solver_sparse(sparse_matrix, Lc, n_iter):
     return Lq, Lr, L_posteriori
 
 
-
 def test_solver_correctness():
     """
     Validates the correctness of the CUDA LogBP solver with sparse matrices.
@@ -168,14 +176,16 @@ def test_solver_correctness():
 
     # Example sparse matrix creation
     dense_matrix = cp.random.randint(0, 2, size=(1000, 1000), dtype=cp.int32)
-    sparse_matrix = csr_matrix(dense_matrix.astype(cp.float64))  # Convert to float64
+    sparse_matrix = csr_matrix(dense_matrix.astype(
+        cp.float64))  # Convert to float64
 
     # Generate Lc as a dense matrix
     Lc = cp.random.randn(sparse_matrix.shape[1], 10).astype(cp.float64)
 
     # Run the solver
     try:
-        Lq, Lr, L_posteriori = run_cuda_solver_sparse(sparse_matrix, Lc, n_iter=10)
+        Lq, Lr, L_posteriori = run_cuda_solver_sparse(
+            sparse_matrix, Lc, n_iter=10)
 
         # Validate output shapes
         assert Lq.shape == (sparse_matrix.shape[0], sparse_matrix.shape[1], Lc.shape[1]), \
@@ -199,7 +209,8 @@ def test_solver_performance():
 
     # Large sparse matrix creation
     dense_matrix = cp.random.randint(0, 2, size=(10000, 10000), dtype=cp.int32)
-    sparse_matrix = csr_matrix(dense_matrix.astype(cp.float64))  # Convert to float64
+    sparse_matrix = csr_matrix(dense_matrix.astype(
+        cp.float64))  # Convert to float64
 
     # Generate Lc as a dense matrix
     Lc = cp.random.randn(sparse_matrix.shape[1], 10).astype(cp.float64)
@@ -208,10 +219,12 @@ def test_solver_performance():
     import time
     start_time = time.time()
     try:
-        Lq, Lr, L_posteriori = run_cuda_solver_sparse(sparse_matrix, Lc, n_iter=10)
+        Lq, Lr, L_posteriori = run_cuda_solver_sparse(
+            sparse_matrix, Lc, n_iter=10)
         end_time = time.time()
 
-        print(f"Performance test completed in {end_time - start_time:.2f} seconds.")
+        print(f"Performance test completed in {
+              end_time - start_time:.2f} seconds.")
     except Exception as e:
         print("Error during performance testing:", str(e))
         raise
