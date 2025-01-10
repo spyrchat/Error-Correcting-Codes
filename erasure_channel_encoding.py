@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pyldpc import make_ldpc, encode, get_message
-from error_correction_codes.decoder_cuda import decode
+from irregular_ldpc.decoder_cuda import decode
 import os
 
 
