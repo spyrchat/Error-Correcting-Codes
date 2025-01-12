@@ -14,7 +14,7 @@ d_v = 2  # Variable node degree for regular LDPC
 d_c = 5  # Check node degree for regular LDPC
 # Increase points for smooth curves
 erasure_thresholds = np.linspace(0.1, 1.0, 50)
-snr_values = [3, 5, 10]
+snr_values = [10]
 
 # Directory for saving plots
 output_dir = os.path.dirname(os.path.abspath(__file__))

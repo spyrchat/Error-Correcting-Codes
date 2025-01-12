@@ -1,11 +1,11 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from pyldpc import make_ldpc, encode, get_message
-from irregular_ldpc.decoder_cuda import decode
+from pyldpc import make_ldpc, encode, get_message, decode
+# from irregular_ldpc.decoder_cuda import decode
 import os
 
 
-def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=1000, verbose=False):
+def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=100, verbose=False):
     """
     Simulate LDPC encoding, transmission with noise and erasures, and decoding.
 
