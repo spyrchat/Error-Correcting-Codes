@@ -93,35 +93,6 @@ class peg():
                     raise
 
 
-# Example Usage
-Lambda = [2.066e-06, 1.96e-06, 1.816e-06, 1.612e-06,
-          1.317e-06, 0.2824, 0.0997, 0.1735, 0.4444, 0]
-Rho = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
-
-design_rate = 0.723
-
-Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1), np.flip(Lambda))
-Rho_prime = np.dot(np.arange(1, len(Rho) + 1), np.flip(Rho))
-
-N = int(np.ceil((Rho_prime / (1 - design_rate)) ** 2))
-M = int(np.floor((Lambda_prime / Rho_prime) * N))
-
-degree_sequence = np.random.choice(
-    np.arange(1, len(Lambda) + 1), size=N, p=Lambda / np.sum(Lambda))
-
-peg_instance = peg(nvar=N, nchk=M, degree_sequence=degree_sequence)
-peg_instance.progressive_edge_growth()
-
-print("Generated Parity-Check Matrix (H):")
-print(peg_instance.H)
-
-# Save H as a numpy array
-np.save("H_matrix.npy", peg_instance.H)
-print("Parity-Check Matrix saved as 'H_matrix.npy'")
-
-# Generate the generator matrix G
-
-
 def coding_matrix(H, sparse=True):
     """Return the generating coding matrix G given the LDPC matrix H."""
     if type(H) == csr_matrix:
@@ -144,12 +115,6 @@ def coding_matrix(H, sparse=True):
     return tG
 
 
-G = coding_matrix(peg_instance.H)
-
-# Save G as a numpy array
-np.save("G_matrix.npy", G)
-print("Generator Matrix saved as 'G_matrix.npy'")
-
 # Validation
 
 
@@ -165,15 +130,41 @@ def validate_ldpc(H, G):
     return True
 
 
-if validate_ldpc(peg_instance.H, np.transpose(G)):
-    print("LDPC matrices are valid.")
-else:
-    print("LDPC matrices are invalid.")
+if __name__ == "__main__":
+    # Example Usage
+    Lambda = [2.066e-06, 1.96e-06, 1.816e-06, 1.612e-06,
+              1.317e-06, 0.2824, 0.0997, 0.1735, 0.4444, 0]
+    Rho = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
 
-"""
-References
+    design_rate = 0.723
 
-"Regular and Irregular Progressive-Edge Growth Tanner Graphs",
-Xiao-Yu Hu, Evangelos Eleftheriou and Dieter M. Arnold.
-IEEE Transactions on Information Theory, January 2005.
-"""
+    Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1), np.flip(Lambda))
+    Rho_prime = np.dot(np.arange(1, len(Rho) + 1), np.flip(Rho))
+
+    N = int(np.ceil((Rho_prime / (1 - design_rate)) ** 2))
+    M = int(np.floor((Lambda_prime / Rho_prime) * N))
+
+    degree_sequence = np.random.choice(
+        np.arange(1, len(Lambda) + 1), size=N, p=Lambda / np.sum(Lambda))
+
+    peg_instance = peg(nvar=N, nchk=M, degree_sequence=degree_sequence)
+    peg_instance.progressive_edge_growth()
+
+    print("Generated Parity-Check Matrix (H):")
+    print(peg_instance.H)
+
+    # Save H as a numpy array
+    np.save("H_matrix.npy", peg_instance.H)
+    print("Parity-Check Matrix saved as 'H_matrix.npy'")
+
+    # Generate the generator matrix G
+    G = coding_matrix(peg_instance.H)
+
+    # Save G as a numpy array
+    np.save("G_matrix.npy", G)
+    print("Generator Matrix saved as 'G_matrix.npy'")
+
+    if validate_ldpc(peg_instance.H, np.transpose(G)):
+        print("LDPC matrices are valid.")
+    else:
+        print("LDPC matrices are invalid.")
