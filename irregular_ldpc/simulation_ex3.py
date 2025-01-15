@@ -12,29 +12,13 @@ matplotlib.use('Agg')
 sys.path.insert(0, os.path.abspath(
     os.path.join(os.path.dirname(__file__), '..')))
 
-try:
-    H = np.load("H_matrix.npy")
-    G = np.load("G_matrix.npy")
-    # G = np.transpose(G)
-except FileNotFoundError:
-    print("Error: One or both of the numpy files 'H_matrix.npy' and 'G_matrix.npy' were not found.")
-    exit(1)
-except Exception as e:
-    print(f"Error loading numpy files: {e}")
-    exit(1)
 
-# Increase points for smooth curves
-erasure_thresholds = np.linspace(0.1, 1.0, 50)
-snr_values = 10
-# Directory for saving plots
-output_dir = os.path.dirname(os.path.abspath(__file__))
-plot_dir = os.path.join(output_dir, "plots")
-os.makedirs(plot_dir, exist_ok=True)  # Ensure plots directory exists
-
-# Function to run simulation and save plots
-
-
-def run_simulation_and_plot(snr):
+def run_simulation_and_plot(snr, H, G):
+    erasure_thresholds = np.linspace(0.1, 1.0, 50)
+    # Directory for saving plots
+    output_dir = os.path.dirname(os.path.abspath(__file__))
+    plot_dir = os.path.join(output_dir, "plots")
+    os.makedirs(plot_dir, exist_ok=True)  # Ensure plots directory exists
     # Run the simulation
     ser_results, bit_rate_results = simulate_irregular_ldpc_erasure_correction(
         H, G, erasure_thresholds, snr_db=snr)
@@ -43,6 +27,11 @@ def run_simulation_and_plot(snr):
     ser_results = np.maximum(ser_results, 1e-10)
     bit_rate_results = np.maximum(bit_rate_results, 1e-10)
 
+    # Find the minimum SER and corresponding threshold
+    min_ser = np.min(ser_results)
+    min_ser_index = np.argmin(ser_results)
+    min_ser_threshold = erasure_thresholds[min_ser_index]
+
     # Plotting results
     plt.figure(figsize=(14, 6))
 
@@ -50,6 +39,9 @@ def run_simulation_and_plot(snr):
     plt.subplot(1, 2, 1)
     plt.plot(erasure_thresholds, ser_results, marker='o',
              markersize=4, label=f"SNR = {snr}")
+    # Mark the minimum SER point
+    plt.scatter(min_ser_threshold, min_ser, color='red', zorder=5,
+                label=f"Min SER: {min_ser:.5e} at {min_ser_threshold:.2f}")
     plt.title("Symbol Error Rate vs. Erasure Threshold")
     plt.xlabel("Erasure Threshold")
     plt.ylabel("Symbol Error Rate (SER)")
@@ -84,5 +76,15 @@ def run_simulation_and_plot(snr):
 
 # Main function for multiprocessing
 if __name__ == "__main__":
-    run_simulation_and_plot(snr_values)
+    try:
+        H = np.load("H_matrix.npy")
+        G = np.load("G_matrix.npy")
+    except FileNotFoundError:
+        print("Error: One or both of the numpy files 'H_matrix.npy' and 'G_matrix.npy' were not found.")
+        exit(1)
+    except Exception as e:
+        print(f"Error loading numpy files: {e}")
+        exit(1)
+    snr_values = [10]
+    run_simulation_and_plot(snr_values, H, G)
     print("All simulations completed.")

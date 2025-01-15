@@ -2,7 +2,6 @@ import cvxpy as cp
 import numpy as np
 import matplotlib.pyplot as plot
 import math
-
 # Returns rho polynomial (highest exponents first) corresponding to average check node degree c_avg
 
 
@@ -126,8 +125,8 @@ def find_best_rate(epsilon, v_max, c_max):
 if __name__ == "__main__":
     # Main optimization loop
     target_rate = 0.7
-    dv_max = 16
-    dc_max = 22
+    dv_max = 10
+    dc_max = 10
 
     T_Delta = 0.001
     epsilon = 0.5

@@ -1,8 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from decoder_cuda import decode, get_message
+import torch
 import os
 from encoder import encode
+if torch.cuda.is_available():
+    from decoder_cuda import decode, get_message
+    print("Using CUDA-based decoder.")
+else:
+    from decoder import decode, get_message
+    print("Using CPU-based decoder.")
 
 
 def simulate_irregular_ldpc_erasure_correction(
@@ -87,7 +93,7 @@ def simulate_irregular_ldpc_erasure_correction(
 
             # Decode
             decoded_codeword = decode(
-                H, received_signal_scaled, snr=snr_db, maxiter=100)
+                H, received_signal_scaled, snr=snr_db, maxiter=1000)
             decoded_message = get_message(G, decoded_codeword)
 
             # Calculate errors: Ignore erased bits

@@ -1,24 +1,3 @@
-#!/usr/bin/env python
-#
-# Copyright 2013 IIT Bombay.
-# Author: Manu T S
-#
-# This is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 3, or (at your option)
-# any later version.
-#
-# This software is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this software; see the file COPYING.  If not, write to
-# the Free Software Foundation, Inc., 51 Franklin Street,
-# Boston, MA 02110-1301, USA.
-#
-
 import utils
 from scipy.sparse import csr_matrix
 from collections import deque
@@ -54,13 +33,14 @@ class peg():
     LDPC matrices. The algorithm is obtained from [1]
     """
 
-    def __init__(self, nvar, nchk, degree_sequence):
+    def __init__(self, nvar, nchk, degree_sequence, verbose=True):
         self.degree_sequence = degree_sequence
         self.nvar = nvar
         self.nchk = nchk
         self.H = np.zeros((nchk, nvar), dtype=np.int32)
         self.sym_degrees = np.zeros(nvar, dtype=np.int32)
         self.chk_degrees = np.zeros(nchk, dtype=np.int32)
+        self.verbose = verbose
 
     def grow_edge(self, var, chk):
         self.H[chk, var] = 1
@@ -88,34 +68,37 @@ class peg():
     def find_smallest_chk(self, cur_chk_list):
         available_indices = np.where(cur_chk_list == 0)[0]
         if len(available_indices) == 0:
-            print("No available check nodes, forcing connection.")
+            if self.verbose:
+                print("No available check nodes, forcing connection.")
             return np.argmin(self.chk_degrees)
         available_degrees = self.chk_degrees[available_indices]
         return available_indices[np.argmin(available_degrees)]
 
     def progressive_edge_growth(self):
         for var in range(self.nvar):
-            print(f"Growing edges for variable {var}")
+            if self.verbose:
+                print(f"Growing edges for variable {var}")
             for k in range(self.degree_sequence[var]):
-                print(f"Attempting connection {k + 1} for variable {var}")
-                if k == 0:
-                    smallest_degree_chk = np.argmin(self.chk_degrees)
-                    self.grow_edge(var, smallest_degree_chk)
-                else:
-                    try:
+                if self.verbose:
+                    print(f"Attempting connection {k + 1} for variable {var}")
+                try:
+                    if k == 0:
+                        smallest_degree_chk = np.argmin(self.chk_degrees)
+                        self.grow_edge(var, smallest_degree_chk)
+                    else:
                         chk = self.bfs(var)
                         self.grow_edge(var, chk)
-                    except ValueError as e:
-                        print(f"Error for variable {var}, edge {k + 1}: {e}")
-                        raise
+                except ValueError as e:
+                    print(f"Error for variable {var}, edge {k + 1}: {e}")
+                    raise
 
 
 # Example Usage
-Lambda = [0.3435, 3.164e-6, 2.3e-6, 1.372e-6, 3.844e-7,
-          0, 0, 0, 0, 0, 0, 0, 0.03874, 0.2021, 0.1395, 0.276]
-Rho = [0.49086162, 0.50913838, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+Lambda = [2.066e-06, 1.96e-06, 1.816e-06, 1.612e-06,
+          1.317e-06, 0.2824, 0.0997, 0.1735, 0.4444, 0]
+Rho = [0, 1, 0, 0, 0, 0, 0, 0, 0, 0]
 
-design_rate = 0.744
+design_rate = 0.723
 
 Lambda_prime = np.dot(np.arange(1, len(Lambda) + 1), np.flip(Lambda))
 Rho_prime = np.dot(np.arange(1, len(Rho) + 1), np.flip(Rho))
@@ -182,7 +165,7 @@ def validate_ldpc(H, G):
     return True
 
 
-if validate_ldpc(peg_instance.H, G):
+if validate_ldpc(peg_instance.H, np.transpose(G)):
     print("LDPC matrices are valid.")
 else:
     print("LDPC matrices are invalid.")

@@ -1,8 +1,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pyldpc import make_ldpc, encode, get_message, decode
-# from irregular_ldpc.decoder_cuda import decode
+import torch
 import os
+if torch.cuda.is_available():
+    from irregular_ldpc.decoder_cuda import decode, get_message
+    print("Using CUDA-based decoder.")
+else:
+    from irregular_ldpc.decoder import decode, get_message
+    print("Using CPU-based decoder.")
 
 
 def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=100, verbose=False):

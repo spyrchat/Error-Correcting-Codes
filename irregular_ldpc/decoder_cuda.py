@@ -5,7 +5,7 @@ from cupyx.scipy.sparse import csr_matrix, isspmatrix_csr
 from numba import cuda
 import math
 import warnings
-from irregular_ldpc.utils import binaryproduct, gausselimination, check_random_state, incode, _bitsandnodes
+from utils import binaryproduct, gausselimination, check_random_state, incode, _bitsandnodes
 from numba.cuda import current_context
 
 
