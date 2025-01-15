@@ -47,3 +47,23 @@ To run this project, install the following:
 Install all dependencies using:
 ```bash
 pip install numpy scipy matplotlib torch pytest cupy
+
+
+## File Descriptions
+
+| File Name                       | Description                                                                 |
+|---------------------------------|-----------------------------------------------------------------------------|
+| `README.md`                     | Project documentation.                                                     |
+| `ergasia 2023-2024.pdf`         | Project guidelines and tasks.                                              |
+| `make_ldpc.py`                  | Generates regular LDPC matrices.                                           |
+| `encoder.py`                    | Encodes data using LDPC.                                                   |
+| `decoder.py`                    | Decodes data using LDPC (CPU-based).                                       |
+| `decoder_cuda.py`               | CUDA-accelerated LDPC decoding.                                            |
+| `construct_irregular_ldpc.py`   | Generates irregular LDPC matrices.                                         |
+| `erasure_channel_encoding.py`   | Simulates erasure channels with regular LDPC codes.                        |
+| `erasure_channel_encoding_irregular.py` | Simulates erasure channels with irregular LDPC codes.             |
+| `bpsk.py`                       | BPSK modulation and decoding.                                              |
+| `bpsk_hamming.py`               | BPSK with Hamming code simulation.                                         |
+| `test_irregular_ldpc.py`        | Unit tests for irregular LDPC.                                             |
+| `simulation_ex2.py`             | Additional simulations for experiment 2.                                   |
+| `demo.py`                       | Complete system demonstration.                                             |
