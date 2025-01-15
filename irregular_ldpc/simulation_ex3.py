@@ -85,6 +85,6 @@ if __name__ == "__main__":
     except Exception as e:
         print(f"Error loading numpy files: {e}")
         exit(1)
-    snr_values = [10]
+    snr_values = 10
     run_simulation_and_plot(snr_values, H, G)
     print("All simulations completed.")

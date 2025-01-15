@@ -1,12 +1,18 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from pyldpc import make_ldpc, encode, get_message, decode
-import torch
 import os
-if torch.cuda.is_available():
-    from irregular_ldpc.decoder_cuda import decode, get_message
-    print("Using CUDA-based decoder.")
-else:
+import cupy as cp
+
+try:
+    # Check if CUDA is available via CuPy
+    if cp.cuda.is_available():
+        from irregular_ldpc.decoder_cuda import decode, get_message
+        print("Using CUDA-based decoder.")
+    else:
+        raise ImportError("CuPy detected no available CUDA devices.")
+except ImportError as e:
+    # Fallback to CPU-based decoder
     from irregular_ldpc.decoder import decode, get_message
     print("Using CPU-based decoder.")
 

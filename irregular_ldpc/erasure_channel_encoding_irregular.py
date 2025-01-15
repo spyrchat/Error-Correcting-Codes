@@ -1,12 +1,19 @@
 import numpy as np
 import matplotlib.pyplot as plt
-import torch
 import os
 from encoder import encode
-if torch.cuda.is_available():
-    from decoder_cuda import decode, get_message
-    print("Using CUDA-based decoder.")
-else:
+import cupy as cp
+import cupy as cp
+
+try:
+    # Check if CUDA is available via CuPy
+    if cp.cuda.is_available():
+        from decoder_cuda import decode, get_message
+        print("Using CUDA-based decoder.")
+    else:
+        raise ImportError("CuPy detected no available CUDA devices.")
+except ImportError as e:
+    # Fallback to CPU-based decoder
     from decoder import decode, get_message
     print("Using CPU-based decoder.")
 

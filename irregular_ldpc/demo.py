@@ -138,7 +138,7 @@ if __name__ == "__main__":
     print("Parity-Check Matrix (H) and Generator Matrix (G) saved as .npy files.")
 
     # Step 3: Run simulation
-    snr_values = [10]
+    snr_values = [10, 7]
     print("Running simulation and plotting results...")
     run_simulation_and_plot(snr_values, H, G)
     print("Simulation completed and plots saved.")
