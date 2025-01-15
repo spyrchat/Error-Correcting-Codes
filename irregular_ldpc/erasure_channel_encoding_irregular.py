@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import os
 from encoder import encode
 import cupy as cp
-import cupy as cp
 
 try:
     # Check if CUDA is available via CuPy
@@ -23,7 +22,7 @@ def simulate_irregular_ldpc_erasure_correction(
     G,
     erasure_thresholds,
     snr_db=10,
-    num_iterations=100,
+    num_iterations=10000,
     plot_interval=1000,
     verbose=False
 ):

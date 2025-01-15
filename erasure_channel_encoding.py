@@ -17,7 +17,7 @@ except ImportError as e:
     print("Using CPU-based decoder.")
 
 
-def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=100, verbose=False):
+def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=10000, plot_interval=100, verbose=False):
     """
     Simulate LDPC encoding, transmission with noise and erasures, and decoding.
 
