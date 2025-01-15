@@ -47,7 +47,7 @@ To run this project, install the following:
 Install all dependencies using:
 ```bash
 pip install numpy scipy matplotlib torch pytest cupy
-
+```
 
 ## File Descriptions
 
