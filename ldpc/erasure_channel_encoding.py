@@ -7,13 +7,13 @@ import cupy as cp
 try:
     # Check if CUDA is available via CuPy
     if cp.cuda.is_available():
-        from irregular_ldpc.decoder_cuda import decode, get_message
+        from decoder_cuda import decode, get_message
         print("Using CUDA-based decoder.")
     else:
         raise ImportError("CuPy detected no available CUDA devices.")
 except ImportError as e:
     # Fallback to CPU-based decoder
-    from irregular_ldpc.decoder import decode, get_message
+    from decoder import decode, get_message
     print("Using CPU-based decoder.")
 
 
