@@ -1,131 +1,124 @@
-import utils
+import numpy as np
 from scipy.sparse import csr_matrix
 from collections import deque
-import copy
-import numpy as np
 from utils import gaussjordan
 
 
 def find_smallest(array):
-    if len(array) == 1:
-        return 0
-    elif len(array) == 2:
-        if array[0] <= array[1]:
-            return 0
-        else:
-            return 1
-    else:
-        mid = len(array) // 2
-        arrayA = array[:mid]
-        arrayB = array[mid:]
-        smallA = find_smallest(arrayA)
-        smallB = find_smallest(arrayB)
-        if arrayA[smallA] <= arrayB[smallB]:
-            return smallA
-        else:
-            return mid + smallB
+    """Find the index of the smallest element in the array."""
+    return np.argmin(array)
 
 
-class peg():
-
+class PEG:
     """
-    Progressive edge growth algorithm for generating
-    LDPC matrices. The algorithm is obtained from [1]
+    Progressive edge growth algorithm for generating LDPC matrices.
     """
 
-    def __init__(self, nvar, nchk, degree_sequence, verbose=True):
+    def __init__(self, nvar, nchk, degree_sequence):
         self.degree_sequence = degree_sequence
         self.nvar = nvar
         self.nchk = nchk
         self.H = np.zeros((nchk, nvar), dtype=np.int32)
         self.sym_degrees = np.zeros(nvar, dtype=np.int32)
         self.chk_degrees = np.zeros(nchk, dtype=np.int32)
-        self.verbose = verbose
 
     def grow_edge(self, var, chk):
+        """Grow an edge between a variable and check node."""
         self.H[chk, var] = 1
         self.sym_degrees[var] += 1
         self.chk_degrees[chk] += 1
 
     def bfs(self, var):
-        var_list = np.zeros(self.nvar, dtype=np.int32)
-        var_list[var] = 1
-        cur_chk_list = np.zeros(self.nchk, dtype=np.int32)
-        queue = deque([var])
+        """Perform BFS to find the smallest degree check node."""
+        var_list = np.zeros(self.nvar, dtype=bool)
+        var_list[var] = True
 
-        while queue:
-            current_var = queue.popleft()
-            for chk in np.where(self.H[:, current_var] == 1)[0]:
-                if cur_chk_list[chk] == 0:
-                    cur_chk_list[chk] = 1
-                    for next_var in np.where(self.H[chk, :] == 1)[0]:
-                        if var_list[next_var] == 0:
-                            var_list[next_var] = 1
-                            queue.append(next_var)
+        cur_chk_list = np.zeros(self.nchk, dtype=bool)
+        new_chk_list = np.zeros(self.nchk, dtype=bool)
 
-        return self.find_smallest_chk(cur_chk_list)
+        var_queue = deque([var])
+
+        while True:
+            # Process variable nodes and find connected check nodes
+            for v in var_queue:
+                connected_checks = np.where(self.H[:, v] == 1)[0]
+                new_chk_list[connected_checks] = True
+
+            var_queue.clear()
+
+            # Process check nodes and find connected variable nodes
+            for chk in np.where(new_chk_list & ~cur_chk_list)[0]:
+                connected_vars = np.where(self.H[chk, :] == 1)[0]
+                var_queue.extend(v for v in connected_vars if not var_list[v])
+                var_list[connected_vars] = True
+
+            cur_chk_list = new_chk_list.copy()
+
+            if np.all(new_chk_list):
+                # All check nodes visited, return the smallest degree check node
+                return self.find_smallest_chk(cur_chk_list)
+            elif not np.any(new_chk_list ^ cur_chk_list):
+                # No new check nodes found, return the smallest degree check node
+                return self.find_smallest_chk(cur_chk_list)
 
     def find_smallest_chk(self, cur_chk_list):
-        available_indices = np.where(cur_chk_list == 0)[0]
-        if len(available_indices) == 0:
-            if self.verbose:
-                print("No available check nodes, forcing connection.")
-            return np.argmin(self.chk_degrees)
-        available_degrees = self.chk_degrees[available_indices]
-        return available_indices[np.argmin(available_degrees)]
+        """Find the smallest degree check node among unvisited nodes."""
+        unvisited_checks = np.where(~cur_chk_list)[0]
+        if len(unvisited_checks) == 0:
+            raise ValueError("No unvisited check nodes available.")
+        return unvisited_checks[np.argmin(self.chk_degrees[unvisited_checks])]
 
     def progressive_edge_growth(self):
+        """Perform progressive edge growth to generate the LDPC matrix."""
         for var in range(self.nvar):
-            if self.verbose:
-                print(f"Growing edges for variable {var}")
             for k in range(self.degree_sequence[var]):
-                if self.verbose:
-                    print(f"Attempting connection {k + 1} for variable {var}")
-                try:
-                    if k == 0:
-                        smallest_degree_chk = np.argmin(self.chk_degrees)
-                        self.grow_edge(var, smallest_degree_chk)
-                    else:
-                        chk = self.bfs(var)
-                        self.grow_edge(var, chk)
-                except ValueError as e:
-                    print(f"Error for variable {var}, edge {k + 1}: {e}")
-                    raise
+                if k == 0:
+                    smallest_degree_chk = find_smallest(self.chk_degrees)
+                    self.grow_edge(var, smallest_degree_chk)
+                else:
+                    chk = self.bfs(var)
+                    self.grow_edge(var, chk)
 
 
 def coding_matrix(H, sparse=True):
-    """Return the generating coding matrix G given the LDPC matrix H."""
-    if type(H) == csr_matrix:
+    """Generate the coding matrix G given the LDPC matrix H."""
+    if isinstance(H, csr_matrix):
         H = H.toarray()
     n_equations, n_code = H.shape
 
+    # Gaussian elimination
     Href_colonnes, tQ = gaussjordan(H.T, 1)
-    Href_diag = gaussjordan(np.transpose(Href_colonnes))
+    Href_diag = gaussjordan(Href_colonnes.T)
     Q = tQ.T
     n_bits = n_code - Href_diag.sum()
 
-    Y = np.zeros(shape=(n_code, n_bits)).astype(int)
-    Y[n_code - n_bits:, :] = np.identity(n_bits)
+    # Create the identity matrix
+    Y = np.zeros((n_code, n_bits), dtype=int)
+    Y[n_code - n_bits:, :] = np.identity(n_bits, dtype=int)
 
     if sparse:
         Q = csr_matrix(Q)
         Y = csr_matrix(Y)
 
-    tG = utils.binaryproduct(Q, Y)
-    return tG
+    # Convert to dense arrays for modulo operation
+    Q_dense = Q.toarray() if sparse else Q
+    Y_dense = Y.toarray() if sparse else Y
 
+    # Perform the modulo operation
+    tG_dense = np.mod(Q_dense @ Y_dense, 2)
 
-# Validation
+    # Convert back to sparse if needed
+    if sparse:
+        return csr_matrix(tG_dense)
+    return tG_dense
 
 
 def validate_ldpc(H, G):
     """Validate the LDPC matrices H and G."""
-    # Orthogonality check: H * G^T = 0 (mod 2)
     orthogonality_check = np.mod(H @ G.T, 2)
     if not np.all(orthogonality_check == 0):
         print("Validation failed: H * G^T != 0 (mod 2)")
         return False
-
     print("Validation successful: H and G are orthogonal.")
     return True
 
@@ -147,20 +140,17 @@ if __name__ == "__main__":
     degree_sequence = np.random.choice(
         np.arange(1, len(Lambda) + 1), size=N, p=Lambda / np.sum(Lambda))
 
-    peg_instance = peg(nvar=N, nchk=M, degree_sequence=degree_sequence)
+    peg_instance = PEG(nvar=N, nchk=M, degree_sequence=degree_sequence)
     peg_instance.progressive_edge_growth()
 
     print("Generated Parity-Check Matrix (H):")
     print(peg_instance.H)
 
-    # Save H as a numpy array
     np.save("H_matrix.npy", peg_instance.H)
     print("Parity-Check Matrix saved as 'H_matrix.npy'")
 
-    # Generate the generator matrix G
     G = coding_matrix(peg_instance.H)
 
-    # Save G as a numpy array
     np.save("G_matrix.npy", G)
     print("Generator Matrix saved as 'G_matrix.npy'")
 

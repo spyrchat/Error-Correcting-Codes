@@ -9,7 +9,7 @@ from utils import binaryproduct, gausselimination, check_random_state, incode, _
 from numba.cuda import current_context
 
 
-def decode(H, y, snr, maxiter=100):
+def decode(H, y, snr, maxiter=1000):
     """Decode a Gaussian noise corrupted n bits message using BP algorithm."""
     m, n = H.shape
 
@@ -147,11 +147,15 @@ def run_cuda_solver(bits_hist, bits_values, nodes_hist, nodes_values, Lc, n_iter
     d_Lr = cp.zeros((m, n, n_messages), dtype=cp.float64)
     d_L_posteriori = cp.zeros((n, n_messages), dtype=cp.float64)
 
-    # Configure CUDA blocks
-    threads_per_block = (32, 32)
+    # Dynamically adjust threads per block
+    threads_per_block_x = min(32, m)
+    threads_per_block_y = min(32, n)
+    threads_per_block = (threads_per_block_x, threads_per_block_y)
+
+    # Calculate grid size
     blocks_per_grid = (
-        (m + threads_per_block[0] - 1) // threads_per_block[0],
-        (n + threads_per_block[1] - 1) // threads_per_block[1],
+        (m + threads_per_block_x - 1) // threads_per_block_x,
+        (n + threads_per_block_y - 1) // threads_per_block_y,
     )
 
     # Run CUDA kernel

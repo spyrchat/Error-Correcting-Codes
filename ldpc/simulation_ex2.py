@@ -14,7 +14,7 @@ d_v = 4  # Variable node degree for regular LDPC
 d_c = 7  # Check node degree for regular LDPC
 # Increase points for smooth curves
 erasure_thresholds = np.linspace(0.1, 1.0, 50)
-snr_values = [10]
+snr_values = [10, 7, 5]
 
 # Directory for saving plots
 output_dir = os.path.dirname(os.path.abspath(__file__))
@@ -76,5 +76,4 @@ def run_simulation_and_plot(snr):
 if __name__ == "__main__":
     with Pool() as pool:
         pool.map(run_simulation_and_plot, snr_values)
-
     print("All simulations completed.")

@@ -1,5 +1,5 @@
 import numpy as np
-from construct_irregular_ldpc import peg, coding_matrix, validate_ldpc
+from construct_irregular_ldpc import PEG, coding_matrix, validate_ldpc
 import matplotlib.pyplot as plt
 from ldpc_optimization import c_avg_to_rho, find_best_rate
 from simulation_ex3 import run_simulation_and_plot
@@ -79,7 +79,7 @@ def construct_and_plot_ldpc(optimal_params):
         np.arange(1, len(Lambda) + 1), size=N, p=Lambda / np.sum(Lambda)
     )
 
-    peg_instance = peg(
+    peg_instance = PEG(
         nvar=N, nchk=M, degree_sequence=degree_sequence, verbose=False)
     peg_instance.progressive_edge_growth()
 
@@ -113,7 +113,7 @@ def construct_and_plot_ldpc(optimal_params):
 
 if __name__ == "__main__":
     # User-defined parameters
-    target_rate = 0.45
+    target_rate = 0.3
     dv_max = 10
     dc_max = 10
 
