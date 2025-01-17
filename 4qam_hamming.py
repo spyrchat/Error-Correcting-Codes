@@ -122,8 +122,7 @@ for _ in range(num_messages):
             print('-------------------------------')
 
 ber_per_snr = errors_per_snr / (num_messages * 4)
-# 4/7 due to Hamming(7,4) and 2 because 4qam transmits 2 bits per symbol
-bit_rate_per_snr = 2 * 4 / 7 * (1 - ber_per_snr)
+bit_rate_per_snr = 4 / 7 * (1 - ber_per_snr)
 
 print("Summary:")
 for snr, errors, ber, bit_rate in zip(snr_db, errors_per_snr, ber_per_snr, bit_rate_per_snr):
