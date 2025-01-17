@@ -122,7 +122,7 @@ for _ in range(num_messages):
             print('-------------------------------')
 
 ber_per_snr = errors_per_snr / (num_messages * 4)
-bit_rate_per_snr = 4 / 7 * (1 - ber_per_snr)
+bit_rate_per_snr = 4/7 * (1 - ber_per_snr)
 
 print("Summary:")
 for snr, errors, ber, bit_rate in zip(snr_db, errors_per_snr, ber_per_snr, bit_rate_per_snr):
