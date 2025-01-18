@@ -113,7 +113,7 @@ def construct_and_plot_ldpc(optimal_params):
 
 if __name__ == "__main__":
     # User-defined parameters
-    target_rate = 0.3
+    target_rate = 0.5
     dv_max = 10
     dc_max = 10
 
@@ -138,7 +138,7 @@ if __name__ == "__main__":
     print("Parity-Check Matrix (H) and Generator Matrix (G) saved as .npy files.")
 
     # Step 3: Run simulation
-    snr_values = [10, 7]
+    snr_values = [10]
     print("Running simulation and plotting results...")
     run_simulation_and_plot(snr_values, H, G)
     print("Simulation completed and plots saved.")
