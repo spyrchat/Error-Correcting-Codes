@@ -7,6 +7,25 @@ import math
 import warnings
 from utils import binaryproduct, gausselimination, check_random_state, incode, _bitsandnodes
 from numba.cuda import current_context
+import subprocess
+import torch
+
+
+def check_nvidia_smi():
+    """Check if an NVIDIA GPU is available using nvidia-smi."""
+    try:
+        result = subprocess.run(
+            ["nvidia-smi"], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+        )
+        if result.returncode == 0:
+            print("NVIDIA GPU detected using nvidia-smi.")
+            return True
+        else:
+            print("nvidia-smi command failed. No GPU detected.")
+            return False
+    except FileNotFoundError:
+        print("nvidia-smi not found. Ensure NVIDIA drivers are installed.")
+        return False
 
 
 def decode(H, y, snr, maxiter=1000):

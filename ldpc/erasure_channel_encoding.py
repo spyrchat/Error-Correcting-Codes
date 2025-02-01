@@ -4,20 +4,23 @@ from pyldpc import make_ldpc, encode, get_message, decode
 import os
 import cupy as cp
 import torch
+from decoder_cuda import check_nvidia_smi
+
+cuda_available = check_nvidia_smi()
 
 try:
-    if torch.cuda.is_available():
+    if cuda_available:
         from decoder_cuda import decode, get_message
         print("Using CUDA-based decoder.")
     else:
-        raise ImportError("PyTorch detected no available CUDA devices.")
+        raise ImportError("No available CUDA devices.")
 except ImportError as e:
     # Fallback to CPU-based decoder
     from decoder import decode, get_message
     print("Using CPU-based decoder.")
 
 
-def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=10000, plot_interval=100, verbose=False):
+def simulate_ldpc_erasure_correction(erasure_thresholds, n, d_v, d_c, snr_db=10, num_iterations=1000, plot_interval=1000, verbose=False):
     """
     Simulate LDPC encoding, transmission with noise and erasures, and decoding.
 

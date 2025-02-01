@@ -4,13 +4,16 @@ import os
 from encoder import encode
 import cupy as cp
 import torch
+from decoder_cuda import check_nvidia_smi
+
+cuda_available = check_nvidia_smi()
 
 try:
-    if torch.cuda.is_available():
+    if cuda_available:
         from decoder_cuda import decode, get_message
         print("Using CUDA-based decoder.")
     else:
-        raise ImportError("PyTorch detected no available CUDA devices.")
+        raise ImportError("No available CUDA devices.")
 except ImportError as e:
     # Fallback to CPU-based decoder
     from decoder import decode, get_message
@@ -22,7 +25,7 @@ def simulate_irregular_ldpc_erasure_correction(
     G,
     erasure_thresholds,
     snr_db=10,
-    num_iterations=10000,
+    num_iterations=1000,
     plot_interval=1000,
     verbose=False
 ):

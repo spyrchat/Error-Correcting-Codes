@@ -3,6 +3,7 @@ from construct_irregular_ldpc import PEG, coding_matrix, validate_ldpc
 import matplotlib.pyplot as plt
 from ldpc_optimization import c_avg_to_rho, find_best_rate
 from simulation_ex3 import run_simulation_and_plot
+from simulation_ex2 import run_simulation_and_plot as run_simulation_and_plot_ex2
 
 
 def optimize_ldpc(target_rate, dv_max, dc_max, epsilon_start=0.5, delta_epsilon=0.5, t_delta=0.001):
@@ -116,6 +117,7 @@ if __name__ == "__main__":
     target_rate = 0.5
     dv_max = 10
     dc_max = 10
+    erasure_threshold = np.linspace(0.1, 1.0, 50)
 
     print("Optimizing LDPC parameters...")
     # Step 1: Optimize LDPC parameters
@@ -140,5 +142,58 @@ if __name__ == "__main__":
     # Step 3: Run simulation
     snr_values = [10]
     print("Running simulation and plotting results...")
-    run_simulation_and_plot(snr_values, H, G)
+    ser_irregular, ber_irregular = run_simulation_and_plot(snr_values, H, G)
     print("Simulation completed and plots saved.")
+
+    # Step 4: Combine the plots
+    ser_regular, ber_regular = run_simulation_and_plot_ex2(snr_values)
+
+    # Find minimum values and their indices
+    min_ser_regular = np.min(ser_regular)
+    min_ser_irregular = np.min(ser_irregular)
+    min_ser_regular_idx = np.argmin(ser_regular)
+    min_ser_irregular_idx = np.argmin(ser_irregular)
+
+    min_ber_regular = np.min(ber_regular)
+    min_ber_irregular = np.min(ber_irregular)
+    min_ber_regular_idx = np.argmin(ber_regular)
+    min_ber_irregular_idx = np.argmin(ber_irregular)
+
+    # Create the plots
+    plt.figure(figsize=(12, 6))
+
+    # Plot Symbol Error Rate (SER)
+    plt.subplot(1, 2, 1)
+    plt.plot(erasure_threshold, ser_regular,
+             label="Regular LDPC", marker='o', color='blue')
+    plt.plot(erasure_threshold, ser_irregular,
+             label="Irregular LDPC", marker='s', color='red')
+    plt.scatter(erasure_threshold[min_ser_regular_idx], min_ser_regular,
+                color='blue', label=f"Min Regular SER: {min_ser_regular:.5f}")
+    plt.scatter(erasure_threshold[min_ser_irregular_idx], min_ser_irregular,
+                color='red', label=f"Min Irregular SER: {min_ser_irregular:.5f}")
+    plt.xlabel("Erasure Threshold")
+    plt.ylabel("Symbol Error Rate (SER)")
+    plt.title("Symbol Error Rate vs. Erasure Threshold")
+    plt.legend()
+    plt.grid()
+
+    # Plot Bit Error Rate (BER)
+    plt.subplot(1, 2, 2)
+    plt.plot(erasure_threshold, ber_regular,
+             label="Regular LDPC", marker='o', color='blue')
+    plt.plot(erasure_threshold, ber_irregular,
+             label="Irregular LDPC", marker='s', color='red')
+    plt.scatter(erasure_threshold[min_ber_regular_idx], min_ber_regular,
+                color='blue', label=f"Min Regular BER: {min_ber_regular:.5f}")
+    plt.scatter(erasure_threshold[min_ber_irregular_idx], min_ber_irregular,
+                color='red', label=f"Min Irregular BER: {min_ber_irregular:.5f}")
+    plt.xlabel("Erasure Threshold")
+    plt.ylabel("Bit Error Rate (BER)")
+    plt.title("Bit Error Rate vs. Erasure Threshold")
+    plt.legend()
+    plt.grid()
+
+    # Show the plots
+    plt.tight_layout()
+    plt.show()
