@@ -3,7 +3,7 @@ from construct_irregular_ldpc import PEG, coding_matrix, validate_ldpc
 import matplotlib.pyplot as plt
 from ldpc_optimization import c_avg_to_rho, find_best_rate
 from simulation_ex3 import run_simulation_and_plot
-from simulation_ex2 import run_simulation_and_plot as run_simulation_and_plot_ex2
+from simulation_ex2 import run_simulation_and_plot as run_simulation_and_plot_regular
 
 
 def optimize_ldpc(target_rate, dv_max, dc_max, epsilon_start=0.5, delta_epsilon=0.5, t_delta=0.001):
@@ -146,7 +146,7 @@ if __name__ == "__main__":
     print("Simulation completed and plots saved.")
 
     # Step 4: Combine the plots
-    ser_regular, ber_regular = run_simulation_and_plot_ex2(snr_values)
+    ser_regular, ber_regular = run_simulation_and_plot_regular(snr_values)
 
     # Find minimum values and their indices
     min_ser_regular = np.min(ser_regular)
