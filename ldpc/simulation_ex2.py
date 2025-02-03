@@ -70,6 +70,7 @@ def run_simulation_and_plot(snr):
     for threshold, ser, bit_rate in zip(erasure_thresholds, ser_results, bit_rate_results):
         print(f"SNR = {snr}, Threshold: {threshold:.2f}, SER: {
               ser:.5f}, Bit Rate: {bit_rate:.5f}")
+    return ser_results, bit_rate_results
 
 
 # Main function for multiprocessing

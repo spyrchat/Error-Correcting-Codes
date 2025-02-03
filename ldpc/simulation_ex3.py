@@ -84,8 +84,8 @@ def run_simulation_and_plot(snr_values, H, G):
 # Main function for multiprocessing
 if __name__ == "__main__":
     try:
-        H = np.load("H_matrix.npy")
-        G = np.load("G_matrix.npy")
+        H = np.load("H_matrix.npy", allow_pickle=True)
+        G = np.load("G_matrix.npy", allow_pickle=True)
     except FileNotFoundError:
         print("Error: One or both of the numpy files 'H_matrix.npy' and 'G_matrix.npy' were not found.")
         exit(1)

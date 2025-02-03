@@ -40,7 +40,6 @@ def simulate_irregular_ldpc_erasure_correction(
     - snr_db: Signal-to-Noise Ratio in dB (single value).
     - num_iterations: Number of iterations for simulation.
     - plot_interval: Interval for saving constellation diagrams.
-    - verbose: Whether to print detailed debug information.
 
     Returns:
     - ser_results: Symbol Error Rates (SER) for each erasure threshold.
@@ -48,13 +47,6 @@ def simulate_irregular_ldpc_erasure_correction(
     """
     print(f"Starting LDPC simulation for SNR = {snr_db} dB...")
 
-    """
-    Simulate LDPC encoding, transmission with noise and erasures, and decoding.
-
-    Returns:
-    - ser_results: Symbol Error Rates (SER) for each erasure threshold.
-    - bit_rate_results: Bit Rates for each erasure threshold.
-    """
     # Generate LDPC matrices
     k = G.shape[1]  # Number of information bits
     print(f"Generated LDPC matrices: H.shape={H.shape}, G.shape={G.shape}")
