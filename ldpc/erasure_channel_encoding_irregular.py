@@ -94,7 +94,7 @@ def simulate_irregular_ldpc_erasure_correction(
 
             # Decode
             decoded_codeword = decode(
-                H, received_signal_scaled, snr=snr_db, maxiter=1000)
+                H, received_signal_scaled, snr=snr_db, maxiter=10000)
             decoded_message = get_message(G, decoded_codeword)
 
             # Calculate errors: Ignore erased bits

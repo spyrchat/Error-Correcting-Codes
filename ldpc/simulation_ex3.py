@@ -4,6 +4,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib
+from construct_irregular_ldpc import coding_matrix
 # Non-interactive backend for multiprocessing safe plotting
 matplotlib.use('Agg')
 
@@ -86,12 +87,13 @@ if __name__ == "__main__":
     try:
         H = np.load("H_matrix.npy", allow_pickle=True)
         G = np.load("G_matrix.npy", allow_pickle=True)
+        G = coding_matrix(H)
     except FileNotFoundError:
         print("Error: One or both of the numpy files 'H_matrix.npy' and 'G_matrix.npy' were not found.")
         exit(1)
     except Exception as e:
         print(f"Error loading numpy files: {e}")
         exit(1)
-    snr_values = [7]
+    snr_values = [10]
     run_simulation_and_plot(snr_values, H, G)
     print("All simulations completed.")

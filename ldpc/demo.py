@@ -116,8 +116,8 @@ def construct_and_plot_ldpc(optimal_params):
 if __name__ == "__main__":
     # User-defined parameters
     target_rate = 0.5
-    dv_max = 10
-    dc_max = 10
+    dv_max = 6
+    dc_max = 12
     erasure_threshold = np.linspace(0.1, 1.0, 50)
 
     print("Optimizing LDPC parameters...")
@@ -175,6 +175,7 @@ if __name__ == "__main__":
                 color='red', label=f"Min Irregular SER: {min_ser_irregular:.5f}")
     plt.xlabel("Erasure Threshold")
     plt.ylabel("Symbol Error Rate (SER)")
+    plt.yscale('log')
     plt.title("Symbol Error Rate vs. Erasure Threshold")
     plt.legend()
     plt.grid()
@@ -192,6 +193,7 @@ if __name__ == "__main__":
     plt.xlabel("Erasure Threshold")
     plt.ylabel("Bit Error Rate (BER)")
     plt.title("Bit Error Rate vs. Erasure Threshold")
+    plt.yscale('log')
     plt.legend()
     plt.grid()
 
