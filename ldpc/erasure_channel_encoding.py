@@ -1,6 +1,5 @@
 import numpy as np
 import matplotlib.pyplot as plt
-from pyldpc import make_ldpc, encode, get_message, decode
 import os
 import cupy as cp
 import torch
@@ -16,7 +15,7 @@ try:
         raise ImportError("No available CUDA devices.")
 except ImportError as e:
     # Fallback to CPU-based decoder
-    from decoder import decode, get_message
+    from pyldpc import make_ldpc, encode, get_message, decode
     print("Using CPU-based decoder.")
 
 
