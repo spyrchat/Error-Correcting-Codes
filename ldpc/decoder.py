@@ -5,61 +5,59 @@ from utils import incode, _bitsandnodes, gausselimination, binaryproduct
 from numba import njit, int64, types, float64
 
 
+import numpy as np
+
+
 def decode(H, y, snr, maxiter=1000):
-    """Decode a Gaussian noise corrupted n bits message using BP algorithm.
+    """Decode a Gaussian noise corrupted n bits message using BP algorithm."""
 
-    Decoding is performed in parallel if multiple codewords are passed in y.
-
-    Parameters
-    ----------
-    H: array (n_equations, n_code). Decoding matrix H.
-    y: array (n_code, n_messages) or (n_code,). Received message(s) in the
-        codeword space.
-    maxiter: int. Maximum number of iterations of the BP algorithm.
-
-    Returns
-    -------
-    x: array (n_code,) or (n_code, n_messages) the solutions in the
-        codeword space.
-
-    """
     m, n = H.shape
 
+    # Ensure bits_hist, bits_values, nodes_hist, nodes_values are NumPy arrays
     bits_hist, bits_values, nodes_hist, nodes_values = _bitsandnodes(H)
 
+    # Convert lists to NumPy arrays
+    bits_hist = np.array(bits_hist, dtype=np.int64)
+    nodes_hist = np.array(nodes_hist, dtype=np.int64)
+
+    # Flatten nested lists into 1D NumPy arrays
+    bits_values_flat = np.concatenate(
+        [np.array(b, dtype=np.int64) for b in bits_values])
+    nodes_values_flat = np.concatenate(
+        [np.array(n, dtype=np.int64) for n in nodes_values])
+
+    # Pick correct solver (Regular or Irregular)
     _n_bits = np.unique(H.sum(0))
     _n_nodes = np.unique(H.sum(1))
 
-    if _n_bits * _n_nodes == 1:
+    if len(_n_bits) == 1 and len(_n_nodes) == 1:
         solver = _logbp_numba_regular
-        bits_values = bits_values.reshape(n, -1)
-        nodes_values = nodes_values.reshape(m, -1)
-
     else:
         solver = _logbp_numba
+
+    # Ensure y is a NumPy array
+    y = np.array(y, dtype=np.float64)
 
     var = 10 ** (-snr / 10)
 
     if y.ndim == 1:
         y = y[:, None]
-    # step 0: initialization
 
     Lc = 2 * y / var
     _, n_messages = y.shape
 
-    Lq = np.zeros(shape=(m, n, n_messages))
+    Lq = np.zeros((m, n, n_messages), dtype=np.float64)
+    Lr = np.zeros((m, n, n_messages), dtype=np.float64)
 
-    Lr = np.zeros(shape=(m, n, n_messages))
     for n_iter in range(maxiter):
-        Lq, Lr, L_posteriori = solver(bits_hist, bits_values, nodes_hist,
-                                      nodes_values, Lc, Lq, Lr, n_iter)
-        x = np.array(L_posteriori <= 0).astype(int)
-        product = incode(H, x)
-        if product:
+        Lq, Lr, L_posteriori = solver(
+            bits_hist, bits_values_flat, nodes_hist, nodes_values_flat,
+            Lc, Lq, Lr, n_iter
+        )
+        x = np.array(L_posteriori <= 0, dtype=int)
+        if incode(H, x):
             break
-    if n_iter == maxiter - 1:
-        warnings.warn("""Decoding stopped before convergence. You may want
-                       to increase maxiter""")
+
     return x.squeeze()
 
 

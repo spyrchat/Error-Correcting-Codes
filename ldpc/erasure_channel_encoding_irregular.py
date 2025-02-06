@@ -1,7 +1,6 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import os
-from encoder import encode
 import cupy as cp
 import torch
 from decoder_cuda import check_nvidia_smi
@@ -16,7 +15,8 @@ try:
         raise ImportError("No available CUDA devices.")
 except ImportError as e:
     # Fallback to CPU-based decoder
-    from decoder import decode, get_message
+    from pyldpc import encode, get_message
+    from decoder import decode
     print("Using CPU-based decoder.")
 
 
