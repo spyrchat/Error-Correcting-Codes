@@ -62,3 +62,15 @@ pip install numpy scipy matplotlib torch pytest cupy-cuda12x
 | `simulation_ex3.py`                       | Simulations for the Irregular LDPC.                                      |
 | `test_irregular_ldpc.py`                  | Unit tests for **irregular LDPC**.                                       |
 | `demo.py`                                 | Complete **end-to-end system demonstration**.                            |
+
+## ⚙️ Setup Instructions  
+
+Follow these steps to set up the project on your local machine:  
+
+### 1️⃣ Clone the Repository  
+First, download the repository using `git clone`:  
+
+```bash
+git clone https://github.com/spyrchat/Error-Correcting-Codes.git
+cd Error-Correcting-Codes
+
