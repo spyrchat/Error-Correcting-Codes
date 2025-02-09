@@ -1,4 +1,4 @@
-# 📡 Error-Correction-Codes Project  
+# 📡 Error-Correcting-Codes Project  
 
 This repository contains Python scripts and resources for exploring and simulating **Error Correction Codes (ECC)**, with a primary focus on **Low-Density Parity-Check (LDPC) codes** for improving communication reliability over **noisy and erasure channels**.  
 
