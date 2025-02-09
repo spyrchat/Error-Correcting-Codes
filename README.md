@@ -1,71 +1,64 @@
-# Error-Correction-Codes Project
+# 📡 Error-Correction-Codes Project  
 
-This repository contains Python scripts and resources for exploring and simulating Error Correction Codes (ECC). The project focuses on coding schemes such as regular and irregular LDPC codes to reduce the Bit Error Rate (BER) and optimize communication over noisy and erasure channels.
+This repository contains Python scripts and resources for exploring and simulating **Error Correction Codes (ECC)**, with a primary focus on **Low-Density Parity-Check (LDPC) codes** for improving communication reliability over **noisy and erasure channels**.  
 
----
-
-## Table of Contents
-- [Overview](#overview)
-- [Features](#features)
-- [Dependencies](#dependencies)
-- [Setup Instructions](#setup-instructions)
-- [Usage Instructions](#usage-instructions)
-- [File Descriptions](#file-descriptions)
-- [Results and Reports](#results-and-reports)
----
-
-## Overview
-
-This project includes:
-1. Performance analysis of linear error correction codes under varying Signal-to-Noise Ratios (SNR).
-2. Evaluating erasure probabilities using regular LDPC codes.
-3. Designing and analyzing irregular LDPC codes.
-4. Simulating erasure-erasure wiretap channels to study secure communication.
+The project implements **both regular and irregular LDPC codes**, optimizes decoding performance using **CUDA acceleration**, and analyzes **Bit Error Rate (BER) vs. Signal-to-Noise Ratio (SNR)** characteristics.  
 
 ---
 
-## Features
-
-- Simulates regular and irregular LDPC codes.
-- Examines BER vs SNR behavior.
-- Models noisy and erasure communication channels.
-- Implements CUDA-accelerated decoding for efficiency.
+## 📖 Table of Contents  
+- [🔍 Overview](#-overview)  
+- [🚀 Features](#-features)  
+- [📦 Dependencies](#-dependencies)  
+- [⚙️ Setup Instructions](#-setup-instructions)  
+- [💡 Usage Instructions](#-usage-instructions)  
+- [📂 File Descriptions](#-file-descriptions)  
 
 ---
 
-## Dependencies
+## 🔍 Overview  
 
-To run this project, install the following:
-- Python 3.8 or later
-- `numpy`
-- `scipy`
-- `matplotlib`
-- `torch` (for CUDA-based decoding)
-- `cupy` (for CUDA-based decoding)
-- `pytest` (for testing)
+This project covers:  
+✅ **Performance analysis of LDPC codes** under varying **Signal-to-Noise Ratios (SNR)**.  
+✅ **Erasure probability evaluation** using **regular LDPC codes**.  
+✅ **Design and analysis of irregular LDPC codes**.  
+✅ **Simulating erasure-erasure wiretap channels** to study secure communication.  
+✅ **CUDA-accelerated decoding** for efficiency in large-scale simulations.  
 
-Install all dependencies using:
+---
+
+## 🚀 Features  
+
+- ✅ **Simulation of Regular & Irregular LDPC Codes**  
+- ✅ **BER vs. SNR Analysis** for communication performance evaluation  
+- ✅ **Noisy and Erasure Channel Modeling**  
+- ✅ **CUDA-Accelerated Decoding** for improved performance  
+
+---
+
+## 📦 Dependencies  
+
+Ensure you have **Python 3.8+** installed. Then, install the required dependencies:  
+
 ```bash
 pip install numpy scipy matplotlib torch pytest cupy-cuda12x
 
 
-```
+## 📂 File Descriptions  
 
-## File Descriptions
-
-| File Name                       | Description                                                                 |
-|---------------------------------|-----------------------------------------------------------------------------|
-| `README.md`                     | Project documentation.                                                     |
-| `ergasia 2023-2024.pdf`         | Project guidelines and tasks.                                              |
-| `make_ldpc.py`                  | Generates regular LDPC matrices.                                           |
-| `encoder.py`                    | Encodes data using LDPC.                                                   |
-| `decoder.py`                    | Decodes data using LDPC (CPU-based).                                       |
-| `decoder_cuda.py`               | CUDA-accelerated LDPC decoding.                                            |
-| `construct_irregular_ldpc.py`   | Generates irregular LDPC matrices.                                         |
-| `erasure_channel_encoding.py`   | Simulates erasure channels with regular LDPC codes.                        |
-| `erasure_channel_encoding_irregular.py` | Simulates erasure channels with irregular LDPC codes.             |
-| `bpsk.py`                       | BPSK modulation and decoding.                                              |
-| `bpsk_hamming.py`               | BPSK with Hamming code simulation.                                         |
-| `test_irregular_ldpc.py`        | Unit tests for irregular LDPC.                                             |
-| `simulation_ex2.py`             | Additional simulations for experiment 2.                                   |
-| `demo.py`                       | Complete system demonstration.                                             |
+| **File Name**                             | **Description**                                                          |
+|-------------------------------------------|--------------------------------------------------------------------------|
+| `README.md`                               | Project documentation.                                                   |
+| `make_ldpc.py`                            | Generates **regular LDPC** parity-check matrices.                        |
+| `construct_irregular_ldpc.py`             | Generates **irregular LDPC** matrices.                                   |
+| `encoder.py`                              | Encodes data using **LDPC codes**.                                       |
+| `decoder.py`                              | **CPU-based** LDPC decoder implementation.                               |
+| `decoder_cuda.py`                         | **CUDA-accelerated** LDPC decoder.                                       |
+| `erasure_channel_encoding.py`             | Simulates **erasure channels** with regular LDPC.                        |
+| `erasure_channel_encoding_irregular.py`   | Simulates erasure channels with **irregular LDPC**.                      |
+| `bpsk.py`                                 | **BPSK modulation** and decoding.                                        |
+| `bpsk_hamming.py`                         | BPSK modulation with **Hamming Code**.                                   |
+| `simulation_ex2.py`                       | Simulations for the regular LDPC.                                        |
+| `simulation_ex3.py`                       | Simulations for the Irregular LDPC.                                      |
+| `test_irregular_ldpc.py`                  | Unit tests for **irregular LDPC**.                                       |
+| `demo.py`                                 | Complete **end-to-end system demonstration**.                            |
