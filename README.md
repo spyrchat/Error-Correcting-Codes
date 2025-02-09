@@ -42,7 +42,7 @@ Ensure you have **Python 3.8+** installed. Then, install the required dependenci
 
 ```bash
 pip install numpy scipy matplotlib torch pytest cupy-cuda12x
-
+```
 
 ## 📂 File Descriptions  
 
