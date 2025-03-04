@@ -22,7 +22,6 @@ This project covers:
 ✅ **Performance analysis of LDPC codes** under varying **Signal-to-Noise Ratios (SNR)**.  
 ✅ **Erasure probability evaluation** using **regular LDPC codes**.  
 ✅ **Design and analysis of irregular LDPC codes**.  
-✅ **Simulating erasure-erasure wiretap channels** to study secure communication.  
 ✅ **CUDA-accelerated decoding** for efficiency in large-scale simulations.  
 
 ---
